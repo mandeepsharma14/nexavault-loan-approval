@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NexaVault Financial Corp — Loan Approval System</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  :root {
+    --navy:   #0A1628;
+    --navy2:  #0D1F36;
+    --teal:   #028090;
+    --mint:   #02C39A;
+    --ice:    #E8F4F8;
+    --white:  #FFFFFF;
+    --lgray:  #F4F6F9;
+    --mgray:  #8A9BB0;
+    --dgray:  #2D3748;
+    --amber:  #E8A020;
+    --red:    #E05050;
+    --green:  #1D9E75;
+    --blue:   #378ADD;
+    --purple: #7B5EA7;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+         background: var(--lgray); color: var(--dgray); min-height: 100vh; }
+
+  /* ── Header ── */
+  .header { background: var(--navy); padding: 0 2rem; height: 58px;
+            display: flex; align-items: center; justify-content: space-between;
+            border-bottom: 3px solid var(--teal); position: sticky; top: 0; z-index: 100; }
+  .header-left { display: flex; align-items: center; gap: 14px; }
+  .logo-badge { background: var(--teal); color: #fff; font-weight: 700;
+                font-size: 13px; padding: 5px 11px; border-radius: 6px; letter-spacing: .04em; }
+  .header-title { color: #fff; font-size: 16px; font-weight: 600; }
+  .header-sub { color: var(--mgray); font-size: 11px; margin-top: 1px; }
+  .api-status { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--mgray); }
+  .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--amber); }
+  .status-dot.connected { background: var(--mint); }
+  .api-url-input { background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.15);
+                   color: #fff; padding: 4px 10px; border-radius: 6px; font-size: 11px;
+                   font-family: monospace; width: 200px; }
+  .connect-btn { background: var(--teal); color: #fff; border: none; padding: 5px 14px;
+                 border-radius: 6px; font-size: 12px; cursor: pointer; font-weight: 500; }
+  .connect-btn:hover { background: var(--mint); color: var(--navy); }
+
+  /* ── Nav tabs ── */
+  .nav { background: var(--navy2); padding: 0 2rem; display: flex; gap: 2px;
+         border-bottom: 1px solid rgba(255,255,255,.08); }
+  .nav-tab { padding: .65rem 1.4rem; font-size: 13px; color: var(--mgray); cursor: pointer;
+             border: none; background: transparent; border-bottom: 2px solid transparent;
+             transition: .15s; white-space: nowrap; }
+  .nav-tab:hover { color: #fff; }
+  .nav-tab.active { color: var(--mint); border-bottom-color: var(--mint); font-weight: 500; }
+
+  /* ── Layout ── */
+  .page { display: none; padding: 1.5rem 2rem; max-width: 1400px; margin: 0 auto; }
+  .page.active { display: block; }
+  .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 1.5rem; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; margin-bottom: 1.25rem; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1.25rem; margin-bottom: 1.25rem; }
+  .grid-predictor { display: grid; grid-template-columns: 3fr 2fr; gap: 1.25rem; align-items: start; }
+
+  /* ── Cards ── */
+  .card { background: #fff; border-radius: 12px; padding: 1.25rem;
+          border: 1px solid #e8ecf0; margin-bottom: 0; }
+  .card-title { font-size: 11px; font-weight: 600; letter-spacing: .06em;
+                text-transform: uppercase; color: var(--mgray); margin-bottom: 1rem;
+                padding-bottom: .5rem; border-bottom: 1px solid #f0f2f5; }
+  .metric-card { background: #fff; border-radius: 10px; padding: 1rem 1.25rem;
+                 border: 1px solid #e8ecf0; }
+  .metric-label { font-size: 11px; color: var(--mgray); margin-bottom: .3rem; }
+  .metric-value { font-size: 26px; font-weight: 700; line-height: 1; }
+  .metric-sub { font-size: 11px; color: var(--mgray); margin-top: .3rem; }
+
+  /* ── Form elements ── */
+  .section-label { font-size: 10px; font-weight: 700; letter-spacing: .07em;
+                   text-transform: uppercase; color: var(--teal); margin: 1rem 0 .6rem;
+                   padding-bottom: .3rem; border-bottom: 1px solid var(--ice); }
+  .form-row { display: grid; gap: 10px; margin-bottom: 10px; }
+  .form-row.cols-2 { grid-template-columns: 1fr 1fr; }
+  .form-row.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+  .form-row.cols-4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+  .fg label { display: block; font-size: 11px; color: var(--mgray); margin-bottom: .28rem; font-weight: 500; }
+  .fg select, .fg input[type=number] {
+    width: 100%; padding: .38rem .65rem; font-size: 12px; border: 1px solid #dde3ea;
+    border-radius: 7px; background: #fff; color: var(--dgray);
+    transition: border-color .15s; height: 32px; }
+  .fg select:focus, .fg input:focus { outline: none; border-color: var(--teal); }
+
+  /* ── Credit tiers ── */
+  .credit-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-bottom: .75rem; }
+  .credit-btn { padding: .35rem .15rem; font-size: 9.5px; text-align: center; border-radius: 7px;
+                cursor: pointer; border: 1.5px solid #dde3ea; background: #f8fafc;
+                color: var(--mgray); transition: .12s; line-height: 1.3; }
+  .credit-btn.sel { font-weight: 600; border-width: 2px; }
+  .credit-info { font-size: 12px; color: var(--dgray); padding: .5rem .75rem;
+                 background: var(--lgray); border-radius: 7px; line-height: 1.5; }
+
+  /* ── Income slider ── */
+  .income-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+  .income-val { font-size: 14px; font-weight: 600; color: var(--navy); }
+  .income-bracket { font-size: 11px; color: var(--mgray); }
+  input[type=range] { width: 100%; accent-color: var(--teal); height: 4px; }
+  .income-ticks { display: flex; justify-content: space-between; font-size: 9px;
+                  color: var(--mgray); margin-top: 2px; }
+
+  /* ── Predict button ── */
+  .predict-btn { width: 100%; padding: .75rem; background: var(--teal); color: #fff;
+                 border: none; border-radius: 8px; font-size: 14px; font-weight: 600;
+                 cursor: pointer; margin-top: 1rem; transition: .15s; letter-spacing: .02em; }
+  .predict-btn:hover { background: var(--mint); color: var(--navy); }
+  .predict-btn:active { transform: scale(.99); }
+
+  /* ── Result panel ── */
+  .result-panel { border-radius: 12px; padding: 1.5rem; border: 1.5px solid #e8ecf0;
+                  background: var(--lgray); text-align: center; position: sticky; top: 76px; }
+  .result-panel.approved { background: #e8faf4; border-color: #5dcaa5; }
+  .result-panel.review   { background: #fef9ec; border-color: #e8c060; }
+  .result-panel.rejected { background: #fdf0f0; border-color: #e09090; }
+  .result-icon { font-size: 38px; margin-bottom: .5rem; }
+  .result-decision { font-size: 22px; font-weight: 700; margin-bottom: .2rem; }
+  .result-decision.approved { color: #085041; }
+  .result-decision.review   { color: #7a5000; }
+  .result-decision.rejected { color: #7a1010; }
+  .result-prob-label { font-size: 12px; color: var(--mgray); margin-bottom: 3px; }
+  .result-prob { font-size: 36px; font-weight: 700; }
+  .prob-bar-wrap { background: rgba(0,0,0,.08); border-radius: 99px; height: 8px;
+                   margin: .7rem 0; overflow: hidden; }
+  .prob-bar { height: 8px; border-radius: 99px; transition: width .5s ease; }
+  .risk-badge { display: inline-block; padding: 3px 14px; border-radius: 99px;
+                font-size: 12px; font-weight: 600; margin-bottom: .75rem; }
+  .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: .75rem; }
+  .detail-item { background: rgba(255,255,255,.65); border-radius: 8px;
+                 padding: .5rem .7rem; text-align: left; }
+  .detail-key { font-size: 10px; color: var(--mgray); }
+  .detail-val { font-size: 13px; font-weight: 600; margin-top: 1px; }
+  .flag-list { margin-top: .75rem; display: flex; flex-direction: column; gap: 4px; }
+  .flag { font-size: 11px; padding: .28rem .7rem; border-radius: 6px;
+          display: flex; align-items: center; gap: 6px; text-align: left; }
+  .flag-warn { background: #fff3cd; color: #7a5000; }
+  .flag-ok   { background: #d4edda; color: #155724; }
+  .api-result { font-size: 10px; color: var(--mgray); margin-top: .75rem;
+                font-family: monospace; background: rgba(0,0,0,.05);
+                border-radius: 6px; padding: .5rem; text-align: left; line-height: 1.6;
+                word-break: break-all; display: none; }
+
+  /* ── Overview charts ── */
+  .chart-wrap { position: relative; }
+  .legend-row { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: .75rem; }
+  .legend-item { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--mgray); }
+  .legend-dot { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+
+  /* ── Model table ── */
+  .model-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .model-table th { background: var(--navy); color: #fff; padding: .6rem .9rem;
+                    font-weight: 600; text-align: left; font-size: 11px; letter-spacing: .04em; }
+  .model-table td { padding: .6rem .9rem; border-bottom: 1px solid #f0f2f5; }
+  .model-table tr.best td { background: #e8faf4; font-weight: 600; color: var(--teal); }
+  .model-table tr:hover td { background: var(--lgray); }
+  .bar-cell { display: flex; align-items: center; gap: 8px; }
+  .mini-bar-bg { flex: 1; background: #f0f2f5; border-radius: 99px; height: 6px; max-width: 80px; }
+  .mini-bar-fill { height: 6px; border-radius: 99px; background: var(--teal); }
+
+  /* ── Pipeline steps ── */
+  .pipeline-flow { display: flex; align-items: flex-start; gap: 0; overflow-x: auto; padding-bottom: .5rem; }
+  .pipe-step { display: flex; flex-direction: column; align-items: center; min-width: 110px; }
+  .pipe-circle { width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center;
+                 justify-content: center; font-size: 15px; font-weight: 700; color: #fff; flex-shrink: 0; }
+  .pipe-label { font-size: 11px; font-weight: 600; text-align: center; margin-top: .5rem; color: var(--dgray); }
+  .pipe-desc { font-size: 10px; color: var(--mgray); text-align: center; margin-top: .2rem; line-height: 1.4; padding: 0 4px; }
+  .pipe-arrow { font-size: 18px; color: var(--mgray); margin: 0 2px; padding-top: 13px; flex-shrink: 0; }
+
+  /* ── Footer ── */
+  .footer { text-align: center; padding: 1.25rem; font-size: 11px; color: var(--mgray);
+            border-top: 1px solid #e8ecf0; margin-top: 2rem; background: #fff; }
+
+  @media (max-width: 900px) {
+    .grid-4 { grid-template-columns: 1fr 1fr; }
+    .grid-predictor { grid-template-columns: 1fr; }
+    .form-row.cols-4 { grid-template-columns: 1fr 1fr; }
+    .credit-grid { grid-template-columns: repeat(4, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-left">
+    <div class="logo-badge">NV</div>
+    <div>
+      <div class="header-title">NexaVault Financial Corp</div>
+      <div class="header-sub">Intelligent Loan Approval System &nbsp;·&nbsp; v2.0 &nbsp;·&nbsp; Copyright © 2026 Mandeep Sharma</div>
+    </div>
+  </div>
+  <div class="api-status">
+    <div class="status-dot" id="statusDot"></div>
+    <span id="statusText">API disconnected</span>
+    <input class="api-url-input" id="apiUrl" value="http://localhost:5000" placeholder="http://localhost:5000">
+    <button class="connect-btn" onclick="checkAPI()">Connect</button>
+  </div>
+</div>
+
+<!-- NAV -->
+<div class="nav">
+  <button class="nav-tab active" onclick="showPage('overview')">Overview</button>
+  <button class="nav-tab" onclick="showPage('predictor')">Live Predictor</button>
+  <button class="nav-tab" onclick="showPage('models')">Model Comparison</button>
+  <button class="nav-tab" onclick="showPage('pipeline')">ML Pipeline</button>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════ -->
+<!-- PAGE: OVERVIEW -->
+<!-- ════════════════════════════════════════════════════════════════ -->
+<div id="page-overview" class="page active">
+
+  <div class="grid-4">
+    <div class="metric-card">
+      <div class="metric-label">Best model AUC</div>
+      <div class="metric-value" style="color:var(--green)">97.4%</div>
+      <div class="metric-sub">SVM · holdout test set</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Accuracy</div>
+      <div class="metric-value" style="color:var(--blue)">90.6%</div>
+      <div class="metric-sub">Correct decisions</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Precision</div>
+      <div class="metric-value" style="color:var(--purple)">94.1%</div>
+      <div class="metric-sub">Low false approvals</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Recall</div>
+      <div class="metric-value" style="color:var(--amber)">95.0%</div>
+      <div class="metric-sub">Good customers kept</div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">Loan status distribution</div>
+      <div class="legend-row">
+        <div class="legend-item"><div class="legend-dot" style="background:var(--green)"></div>Approved 77%</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--amber)"></div>Manual Review 18%</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--red)"></div>Rejected 5%</div>
+      </div>
+      <div class="chart-wrap" style="height:200px"><canvas id="donutChart"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Approval rate by property area</div>
+      <div class="chart-wrap" style="height:240px"><canvas id="areaChart"></canvas></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Top feature importances</div>
+    <div id="featureImportance"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Experian credit tier — approval rate benchmark</div>
+    <div class="chart-wrap" style="height:200px"><canvas id="creditChart"></canvas></div>
+  </div>
+
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════ -->
+<!-- PAGE: PREDICTOR -->
+<!-- ════════════════════════════════════════════════════════════════ -->
+<div id="page-predictor" class="page">
+<div class="grid-predictor">
+
+  <!-- FORM -->
+  <div>
+    <div class="card">
+      <div class="section-label">Personal information</div>
+      <div class="form-row cols-3">
+        <div class="fg"><label>Gender identity</label>
+          <select id="f-gender"><option>Male</option><option>Female</option><option>Non-binary</option><option>Genderqueer</option><option>Transgender male</option><option>Transgender female</option><option>Prefer not to say</option></select></div>
+        <div class="fg"><label>Marital status</label>
+          <select id="f-married"><option>Single</option><option>Married</option><option>Domestic Partnership</option><option>Separated</option><option>Divorced</option><option>Widowed</option></select></div>
+        <div class="fg"><label>Dependents</label>
+          <select id="f-dep"><option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4+</option></select></div>
+      </div>
+      <div class="form-row cols-2">
+        <div class="fg"><label>Education level</label>
+          <select id="f-edu"><option>High School</option><option>Associate Degree</option><option>Bachelor's Degree</option><option>Master's Degree</option><option>Doctoral Degree</option><option>No Formal Education</option></select></div>
+        <div class="fg"><label>Citizenship / residency</label>
+          <select id="f-citizen"><option>US Citizen</option><option>Permanent Resident</option><option>Visa Holder (H-1B/L1)</option><option>DACA Recipient</option><option>Other</option></select></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="section-label">Employment & income</div>
+      <div class="form-row cols-2">
+        <div class="fg"><label>Employment status</label>
+          <select id="f-emp">
+            <option>Full-time Employee</option><option>Part-time Employee</option>
+            <option>Self-Employed</option><option>Independent Contractor</option>
+            <option>Business Owner</option><option>Freelancer</option>
+            <option>Government/Military</option><option>Retired</option>
+            <option>Unemployed</option><option>Student</option>
+          </select></div>
+        <div class="fg"><label>Job tenure</label>
+          <select id="f-tenure"><option>&lt;6 months</option><option>6-12 months</option><option>1-2 years</option><option>2-5 years</option><option>5-10 years</option><option>10+ years</option></select></div>
+      </div>
+
+      <div class="fg" style="margin-bottom:10px">
+        <label>Applicant annual gross income</label>
+        <div class="income-row">
+          <span class="income-val" id="incDisplay">$55,000</span>
+          <span class="income-bracket" id="incBracket">$50K–$75K</span>
+        </div>
+        <input type="range" id="f-inc" min="0" max="30" value="11" step="1" oninput="updInc()">
+        <div class="income-ticks"><span>$0</span><span>$50K</span><span>$100K</span><span>$200K</span><span>$500K+</span></div>
+      </div>
+
+      <div class="fg" style="margin-bottom:10px">
+        <label>Co-applicant annual income</label>
+        <div class="income-row">
+          <span class="income-val" id="coIncDisplay">$25,000</span>
+          <span class="income-bracket" id="coIncBracket">$15K–$25K</span>
+        </div>
+        <input type="range" id="f-coinc" min="0" max="30" value="6" step="1" oninput="updCoInc()">
+        <div class="income-ticks"><span>$0</span><span>$50K</span><span>$100K</span><span>$200K</span><span>$500K+</span></div>
+      </div>
+
+      <div class="form-row cols-3">
+        <div class="fg"><label>Other income sources</label>
+          <select id="f-other"><option value="0">None</option><option value="5000">Rental income</option><option value="3000">Dividends</option><option value="2000">Side business</option><option value="8000">Alimony/Support</option><option value="4000">Social Security</option><option value="6000">Pension</option></select></div>
+        <div class="fg"><label>Industry</label>
+          <select id="f-industry"><option>Technology</option><option>Healthcare</option><option>Finance</option><option>Education</option><option>Retail</option><option>Manufacturing</option><option>Government</option><option>Construction</option><option>Legal</option><option>Other</option></select></div>
+        <div class="fg"><label>Monthly debt obligations</label>
+          <select id="f-debt">
+            <option value="0">None — $0</option>
+            <option value="200">Under $200</option>
+            <option value="500">$200 – $500</option>
+            <option value="800">$500 – $800</option>
+            <option value="1000">$800 – $1,000</option>
+            <option value="1500">$1,000 – $1,500</option>
+            <option value="2000">$1,500 – $2,000</option>
+            <option value="2500">$2,000 – $2,500</option>
+            <option value="3000">$2,500 – $3,000</option>
+            <option value="3500">$3,000 – $3,500</option>
+            <option value="4000">$3,500 – $4,000</option>
+            <option value="5000">$4,000 – $5,000</option>
+            <option value="7500">$5,000 – $7,500</option>
+            <option value="10000">Over $7,500</option>
+          </select></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="section-label">Credit profile — Experian model</div>
+      <div class="credit-grid" id="creditTiers"></div>
+      <div class="credit-info" id="creditInfo">Good (670–739) — Generally qualifies for standard loan products at competitive rates.</div>
+
+      <div class="form-row cols-3" style="margin-top:10px">
+        <div class="fg"><label>Bankruptcy history</label>
+          <select id="f-bankrupt"><option>None</option><option>Discharged 7+ years ago</option><option>Discharged 2-7 years ago</option><option>Discharged under 2 years</option><option>Active/Pending</option></select></div>
+        <div class="fg"><label>Late payments (2 yrs)</label>
+          <select id="f-late"><option value="0">None</option><option value="1">1</option><option value="2">2–3</option><option value="3">4+</option><option value="4">Collections</option></select></div>
+        <div class="fg"><label>Credit utilization</label>
+          <select id="f-util"><option value="5">Under 10% (excellent)</option><option value="20">10–30% (good)</option><option value="45">30–50% (fair)</option><option value="65">50–75% (poor)</option><option value="85">Over 75% (very poor)</option></select></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="section-label">Loan details</div>
+      <div class="form-row cols-2">
+        <div class="fg"><label>Loan type</label>
+          <select id="f-ltype"><option>Personal Loan</option><option>Home Purchase</option><option>Home Refinance</option><option>HELOC</option><option>Auto Loan</option><option>Debt Consolidation</option><option>Business Loan</option><option>Education Loan</option></select></div>
+        <div class="fg"><label>Loan purpose</label>
+          <select id="f-purpose"><option>Primary Residence</option><option>Investment Property</option><option>Vacation Home</option><option>Home Improvement</option><option>Debt Consolidation</option><option>Major Purchase</option><option>Medical</option><option>Business Capital</option></select></div>
+      </div>
+      <div class="form-row cols-3">
+        <div class="fg"><label>Loan amount ($K)</label>
+          <input type="number" id="f-loan" value="150" min="5" max="2000"></div>
+        <div class="fg"><label>Loan term</label>
+          <select id="f-term"><option value="60">5 yr (60 mo)</option><option value="84">7 yr (84 mo)</option><option value="120">10 yr (120 mo)</option><option value="180">15 yr (180 mo)</option><option value="240">20 yr (240 mo)</option><option value="360" selected>30 yr (360 mo)</option><option value="480">40 yr (480 mo)</option></select></div>
+        <div class="fg"><label>Down payment</label>
+          <select id="f-down"><option value="0">0%</option><option value="3.5">3.5% (FHA)</option><option value="5">5%</option><option value="10">10%</option><option value="20" selected>20%</option><option value="25">25%</option><option value="30">30%+</option></select></div>
+      </div>
+      <div class="form-row cols-2">
+        <div class="fg"><label>Property area</label>
+          <select id="f-area"><option>Urban</option><option>Semiurban</option><option>Rural</option><option>Suburban</option></select></div>
+        <div class="fg"><label>Collateral</label>
+          <select id="f-collateral"><option>Real Estate</option><option>Vehicle</option><option>Investment Portfolio</option><option>Business Assets</option><option>None (Unsecured)</option></select></div>
+      </div>
+    </div>
+
+    <button class="predict-btn" onclick="runPrediction()">Run AI Prediction</button>
+  </div>
+
+  <!-- RESULT -->
+  <div>
+    <div class="result-panel" id="resultPanel">
+      <div style="color:var(--mgray);font-size:13px;padding:2rem 0">
+        Complete the form and click<br><strong>Run AI Prediction</strong>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════ -->
+<!-- PAGE: MODEL COMPARISON -->
+<!-- ════════════════════════════════════════════════════════════════ -->
+<div id="page-models" class="page">
+  <div class="card" style="margin-bottom:1.25rem">
+    <div class="card-title">Model performance — test set results</div>
+    <table class="model-table">
+      <thead><tr><th>Model</th><th>CV AUC</th><th>Test AUC</th><th>F1 Score</th><th>Precision</th><th>Recall</th><th>Accuracy</th></tr></thead>
+      <tbody id="modelTableBody"></tbody>
+    </table>
+  </div>
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">ROC curves</div>
+      <div class="chart-wrap" style="height:280px"><canvas id="rocChart"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Confusion matrix — SVM (best model)</div>
+      <div id="confMatrix" style="display:grid;grid-template-columns:auto 1fr 1fr;gap:6px;max-width:360px;margin-top:.5rem"></div>
+      <div style="margin-top:1rem;font-size:12px;color:var(--mgray)">Decision thresholds: &nbsp;<strong style="color:var(--green)">≥ 65% → Approved</strong> &nbsp;·&nbsp; <strong style="color:var(--amber)">45–64% → Review</strong> &nbsp;·&nbsp; <strong style="color:var(--red)">&lt; 45% → Rejected</strong></div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════ -->
+<!-- PAGE: ML PIPELINE -->
+<!-- ════════════════════════════════════════════════════════════════ -->
+<div id="page-pipeline" class="page">
+  <div class="card" style="margin-bottom:1.25rem">
+    <div class="card-title">End-to-end ML pipeline</div>
+    <div class="pipeline-flow" id="pipelineFlow"></div>
+  </div>
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">Dataset statistics</div>
+      <div id="dataStats"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Engineered features</div>
+      <div id="engFeatures"></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">API endpoints</div>
+    <div id="apiEndpoints"></div>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<div class="footer">
+  Copyright © 2026 Mandeep Sharma. All rights reserved. &nbsp;·&nbsp; NexaVault Financial Corp &nbsp;·&nbsp; Intelligent Loan Approval System v2.0
+</div>
+
+<script>
+// ── Page navigation ───────────────────────────────────────────────────────
+function showPage(name) {
+  const pages = ['overview','predictor','models','pipeline'];
+  document.querySelectorAll('.nav-tab').forEach((t,i) => t.classList.toggle('active', pages[i]===name));
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+}
+
+// ── API connection ────────────────────────────────────────────────────────
+async function checkAPI() {
+  const url = document.getElementById('apiUrl').value.trim();
+  const dot  = document.getElementById('statusDot');
+  const txt  = document.getElementById('statusText');
+  txt.textContent = 'Connecting...';
+  try {
+    const r = await fetch(url+'/health', {signal: AbortSignal.timeout(4000)});
+    const d = await r.json();
+    dot.className = 'status-dot connected';
+    txt.textContent = 'API connected · model ' + d.model;
+  } catch(e) {
+    dot.className = 'status-dot';
+    txt.textContent = 'API offline — using simulation';
+  }
+}
+
+// ── Income steps ──────────────────────────────────────────────────────────
+const INC_STEPS = [0,5000,10000,15000,20000,25000,30000,35000,40000,45000,50000,
+  60000,70000,80000,90000,100000,120000,140000,160000,180000,200000,
+  225000,250000,275000,300000,350000,400000,450000,500000,600000,750000];
+
+function fmtMoney(v) {
+  if(v===0) return '$0';
+  if(v>=1000000) return '$'+(v/1000000).toFixed(1)+'M';
+  if(v>=1000) return '$'+(v/1000 % 1 === 0 ? v/1000 : (v/1000).toFixed(1))+'K';
+  return '$'+v;
+}
+function incBracket(v) {
+  if(v===0) return 'No income';
+  if(v<15000) return 'Under $15K'; if(v<25000) return '$15K–$25K';
+  if(v<35000) return '$25K–$35K'; if(v<50000) return '$35K–$50K';
+  if(v<75000) return '$50K–$75K'; if(v<100000) return '$75K–$100K';
+  if(v<150000) return '$100K–$150K'; if(v<200000) return '$150K–$200K';
+  if(v<300000) return '$200K–$300K'; return 'Over $300K';
+}
+function updInc() {
+  const v = INC_STEPS[+document.getElementById('f-inc').value];
+  document.getElementById('incDisplay').textContent = fmtMoney(v)+' / yr';
+  document.getElementById('incBracket').textContent = incBracket(v);
+}
+function updCoInc() {
+  const v = INC_STEPS[+document.getElementById('f-coinc').value];
+  document.getElementById('coIncDisplay').textContent = fmtMoney(v)+' / yr';
+  document.getElementById('coIncBracket').textContent = v===0?'No income':incBracket(v);
+}
+updInc(); updCoInc();
+
+// ── Credit tiers ──────────────────────────────────────────────────────────
+const TIERS = [
+  {label:'Exceptional', range:'800-850', score:825, color:'#1D9E75', textColor:'#04342C', desc:'Qualifies for the very best rates. Top 1% of borrowers.', numVal:1.0},
+  {label:'Very Good',   range:'740-799', score:770, color:'#5DCAA5', textColor:'#085041', desc:'Above-average credit. Eligible for most products at competitive rates.', numVal:0.85},
+  {label:'Good',        range:'670-739', score:705, color:'#378ADD', textColor:'#042C53', desc:'Generally qualifies for standard loan products at competitive rates.', numVal:0.68},
+  {label:'Fair',        range:'580-669', score:625, color:'#EF9F27', textColor:'#412402', desc:'May qualify with higher rates. Co-signer may be required.', numVal:0.45},
+  {label:'Poor',        range:'500-579', score:540, color:'#D85A30', textColor:'#4A1B0C', desc:'Limited options. High interest rates. Co-signer often required.', numVal:0.25},
+  {label:'Very Poor',   range:'300-499', score:420, color:'#E24B4A', textColor:'#501313', desc:'Most lenders will decline. Credit repair recommended before applying.', numVal:0.05},
+  {label:'No History',  range:'N/A',     score:0,   color:'#B4B2A9', textColor:'#2C2C2A', desc:'No credit file found. Alternative verification required.', numVal:0.3},
+];
+let selCredit = 2;
+
+function renderTiers() {
+  const ct = document.getElementById('creditTiers');
+  ct.innerHTML = '';
+  TIERS.forEach((t,i) => {
+    const btn = document.createElement('div');
+    btn.className = 'credit-btn' + (i===selCredit?' sel':'');
+    if(i===selCredit){btn.style.borderColor=t.color; btn.style.background=t.color+'22'; btn.style.color=t.textColor;}
+    btn.innerHTML = `<div>${t.label}</div><div style="font-size:8.5px;opacity:.75;margin-top:1px">${t.range}</div>`;
+    btn.onclick = () => { selCredit=i; renderTiers(); updateCreditInfo(); };
+    ct.appendChild(btn);
+  });
+}
+function updateCreditInfo() {
+  const t = TIERS[selCredit];
+  document.getElementById('creditInfo').innerHTML =
+    `<strong style="color:${t.textColor}">${t.label} — ${t.range}</strong><br>${t.desc}`;
+  document.getElementById('creditInfo').style.background = t.color+'18';
+  document.getElementById('creditInfo').style.borderLeft = `3px solid ${t.color}`;
+}
+renderTiers(); updateCreditInfo();
+
+// ── Prediction engine ─────────────────────────────────────────────────────
+async function runPrediction() {
+  const inc    = INC_STEPS[+document.getElementById('f-inc').value];
+  const coinc  = INC_STEPS[+document.getElementById('f-coinc').value];
+  const other  = +document.getElementById('f-other').value || 0;
+  const debt   = +document.getElementById('f-debt').value || 0;
+  const loan   = +document.getElementById('f-loan').value || 150;
+  const term   = +document.getElementById('f-term').value || 360;
+  const down   = +document.getElementById('f-down').value || 0;
+  const late   = +document.getElementById('f-late').value || 0;
+  const util   = +document.getElementById('f-util').value || 20;
+  const emp    = document.getElementById('f-emp').value;
+  const edu    = document.getElementById('f-edu').value;
+  const bankrupt = document.getElementById('f-bankrupt').value;
+  const tenure = document.getElementById('f-tenure').value;
+  const tier   = TIERS[selCredit];
+
+  const payload = {
+    Gender: document.getElementById('f-gender').value,
+    Marital_Status: document.getElementById('f-married').value,
+    Dependents: +document.getElementById('f-dep').value,
+    Education: edu, Employment_Status: emp, Job_Tenure: tenure,
+    Industry: document.getElementById('f-industry').value,
+    Applicant_Annual_Income: inc, CoApplicant_Annual_Income: coinc,
+    Other_Income: other, Monthly_Debt_Obligations: debt,
+    Credit_Tier: tier.label+' ('+tier.range+')',
+    Credit_Utilization_Pct: util, Late_Payments_2yr: late,
+    Bankruptcy_History: bankrupt,
+    Loan_Type: document.getElementById('f-ltype').value,
+    Loan_Purpose: document.getElementById('f-purpose').value,
+    Loan_Amount_K: loan, Loan_Term_Months: term, Down_Payment_Pct: down,
+    Property_Area: document.getElementById('f-area').value,
+    Collateral: document.getElementById('f-collateral').value
+  };
+
+  let result = null;
+  const apiUrl = document.getElementById('apiUrl').value.trim();
+
+  try {
+    const r = await fetch(apiUrl+'/predict', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(payload), signal: AbortSignal.timeout(5000)
+    });
+    result = await r.json();
+  } catch(e) {
+    result = simulatePredict(payload, tier, inc, coinc, other, debt, loan, term, late, util, emp, edu, bankrupt, tenure, down);
+    result._simulated = true;
+  }
+
+  renderResult(result, payload);
+}
+
+function simulatePredict(p, tier, inc, coinc, other, debt, loan, term, late, util, emp, edu, bankrupt, tenure, down) {
+  const total = inc+coinc+other;
+  const monthly = total/12;
+  const emi = (loan*1000)/Math.max(term,1);
+  const ratio = monthly/Math.max(emi,1);
+  const lti = (loan*1000)/Math.max(total,1);
+  const creditFactor = tier.numVal;
+  const eduMap = {'No Formal Education':0,'High School':0.2,'Associate Degree':0.4,"Bachelor's Degree":0.6,"Master's Degree":0.8,'Doctoral Degree':1.0};
+  const empMap = {'Full-time Employee':1,'Government/Military':1,'Retired':0.8,'Business Owner':0.7,'Self-Employed':0.6,'Independent Contractor':0.5,'Part-time Employee':0.5,'Freelancer':0.4,'Unemployed':0,'Student':0.3};
+  const tenureMap = {'<6 months':0.1,'6-12 months':0.2,'1-2 years':0.4,'2-5 years':0.6,'5-10 years':0.8,'10+ years':1.0};
+  const bankPen = bankrupt==='None'?0:bankrupt.includes('Active')?-0.3:bankrupt.includes('under 2')?-0.18:bankrupt.includes('2-7')?-0.1:-0.04;
+  const latePen = late*-0.05;
+  const utilBonus = util<=20?0.05:util<=30?0.02:util<=50?-0.02:util<=75?-0.08:-0.14;
+
+  const collateralMap = {'Real Estate':3,'Investment Portfolio':2,'Business Assets':2,'Vehicle':1,'None (Unsecured)':0};
+  const loanTypeRisk  = {'Home Purchase':0,'Home Refinance':0,'HELOC':1,'Auto Loan':1,'Education Loan':1,'Debt Consolidation':2,'Business Loan':2,'Personal Loan':2};
+  const collateralVal = (collateralMap[p.Collateral]||1) / 3;
+  const loanRiskVal   = 1 - ((loanTypeRisk[p.Loan_Type]||1) / 3);
+
+  const score = (
+    0.32*creditFactor +
+    0.16*Math.min(ratio/4,1) +
+    0.10*(eduMap[edu]||0.4) +
+    0.08*(empMap[emp]||0.4) +
+    0.07*(tenureMap[tenure]||0.4) +
+    0.07*(1-Math.min(lti/8,1)) +
+    0.07*collateralVal +
+    0.05*loanRiskVal +
+    0.04*(down/30) +
+    bankPen + latePen + utilBonus
+  );
+  const noise = (Math.random()-0.5)*0.03;
+  const prob = Math.min(0.97,Math.max(0.03,1/(1+Math.exp(-7*(score-0.38)+noise))));
+  const decision = prob>=0.65?'Approved':prob>=0.45?'Manual Review':'Rejected';
+  const risk = prob>=0.80?'Very Low':prob>=0.65?'Low':prob>=0.45?'Medium':prob>=0.30?'High':'Very High';
+  return {decision, approval_probability:Math.round(prob*1000)/10, risk_level:risk,
+          monthly_emi:Math.round(emi*100)/100};
+}
+
+function renderResult(r, p) {
+  const panel   = document.getElementById('resultPanel');
+  const approved = r.decision==='Approved';
+  const review   = r.decision==='Manual Review';
+  const cls      = approved?'approved':review?'review':'rejected';
+  const icon     = approved?'✓':review?'⏸':'✗';
+  const iconBg   = approved?'var(--green)':review?'var(--amber)':'var(--red)';
+  const prob     = r.approval_probability;
+  const barColor = approved?'var(--green)':review?'var(--amber)':'var(--red)';
+  const riskColors   = {'Very Low':'#1D9E75','Low':'#378ADD','Medium':'#E8A020','High':'#D85A30','Very High':'#E24B4A'};
+  const riskBgColors = {'Very Low':'#e8faf4','Low':'#e6f1fb','Medium':'#fef9ec','High':'#fdf0f0','Very High':'#fdf0f0'};
+  const rc = riskColors[r.risk_level]||'#888';
+  const rb = riskBgColors[r.risk_level]||'#f5f5f5';
+
+  const inc   = INC_STEPS[+document.getElementById('f-inc').value];
+  const coinc = INC_STEPS[+document.getElementById('f-coinc').value];
+  const other = +document.getElementById('f-other').value||0;
+  const debt  = +document.getElementById('f-debt').value||0;
+  const total = (inc+coinc+other)/12;
+  const emi   = r.monthly_emi||0;
+  const ratio = emi>0?(total/emi).toFixed(2):'—';
+  const lti   = total*12>0?((+document.getElementById('f-loan').value*1000)/(total*12)).toFixed(2):'—';
+  const dti   = total>0?((debt+emi)/total*100).toFixed(1):'—';
+
+  // If API returned hard gate rejection reasons, show those directly
+  if(r.gate_failed && r.rejection_reasons && r.rejection_reasons.length>0) {
+    const reasonsHtml = r.rejection_reasons.map(reason=>
+      `<div class="flag flag-warn" style="margin-bottom:4px;line-height:1.5">▲ ${reason}</div>`
+    ).join('');
+    panel.className = 'result-panel rejected';
+    panel.innerHTML = `
+      <div style="width:52px;height:52px;border-radius:50%;background:var(--red);color:#fff;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;margin:0 auto .6rem">✗</div>
+      <div class="result-decision rejected">Rejected</div>
+      <span class="risk-badge" style="background:#fdf0f0;color:#7a1010">Very High Risk</span>
+      <div style="margin:.75rem 0;padding:.6rem .75rem;background:#fdf0f0;border-radius:8px;font-size:12px;font-weight:600;color:#7a1010;border:1px solid #f0a0a0">
+        Failed underwriting rules — ML model not consulted
+      </div>
+      <div class="detail-grid" style="margin-bottom:.75rem">
+        <div class="detail-item"><div class="detail-key">Monthly EMI</div><div class="detail-val">$${Math.round(emi).toLocaleString()}</div></div>
+        <div class="detail-item"><div class="detail-key">Monthly income</div><div class="detail-val">$${Math.round(total).toLocaleString()}</div></div>
+        <div class="detail-item"><div class="detail-key">DTI ratio</div><div class="detail-val">${dti}%</div></div>
+        <div class="detail-item"><div class="detail-key">Income / EMI</div><div class="detail-val">${ratio}×</div></div>
+      </div>
+      <div style="font-size:11px;font-weight:600;color:#7a1010;margin-bottom:.4rem;text-align:left">Rejection reasons:</div>
+      <div class="flag-list">${reasonsHtml}</div>
+      <div style="font-size:10px;color:var(--mgray);margin-top:.75rem">Live result from NexaVault API v5.0</div>
+    `;
+    return;
+  }
+
+  // Normal ML result — build smart flags
+  const flags = [];
+  if(TIERS[selCredit].score<580 && TIERS[selCredit].score>0) flags.push({t:'warn',m:'Credit score below 580 — high risk tier'});
+  else if(TIERS[selCredit].score>=740) flags.push({t:'ok',m:'Strong credit score ('+TIERS[selCredit].range+')'});
+  if(total>0 && emi>0 && total/emi<1.5) flags.push({t:'warn',m:'Income/EMI ratio below 1.5× — affordability concern'});
+  else if(total>0 && emi>0 && total/emi>3) flags.push({t:'ok',m:'Strong income-to-EMI ratio ('+ratio+'×)'});
+  if(parseFloat(dti)>36) flags.push({t:'warn',m:'DTI ratio '+dti+'% — above the 36% preferred threshold'});
+  else flags.push({t:'ok',m:'DTI ratio '+dti+'% — within acceptable range'});
+  const bk = document.getElementById('f-bankrupt').value;
+  if(bk!=='None') flags.push({t:'warn',m:'Bankruptcy on file: '+bk});
+  if(+document.getElementById('f-late').value>=2) flags.push({t:'warn',m:'Multiple late payments detected'});
+
+  // Interest rate info from API
+  const rateLabel  = r.interest_rate ? `${r.interest_rate}% APR` : 'Rate TBD';
+  const trueEmi    = r.true_emi_with_rate || emi;
+  const totalPmt   = r.total_payment   ? `$${Math.round(r.total_payment).toLocaleString()}`   : '—';
+  const totalInt   = r.total_interest  ? `$${Math.round(r.total_interest).toLocaleString()}`  : '—';
+  const hasRate    = !!r.interest_rate;
+
+  // Rate indicator color
+  const rateColor = !r.interest_rate ? '#888' :
+    r.interest_rate <= 7 ? '#1D9E75' :
+    r.interest_rate <= 12 ? '#E8A020' : '#D85A30';
+
+  const reviewHtml = (r.review_reasons && r.review_reasons.length>0)
+    ? `<div style="margin-bottom:.5rem">${r.review_reasons.map(rv=>`<div class="flag flag-warn" style="margin-bottom:3px;line-height:1.5">▲ ${rv}</div>`).join('')}</div>` : '';
+
+  const flagHtml = flags.map(f=>`<div class="flag flag-${f.t}">${f.t==='warn'?'▲':'✓'} ${f.m}</div>`).join('');
+  const simNote  = r._simulated
+    ? '<div style="font-size:10px;color:var(--mgray);margin-top:.75rem">Simulated result · connect Flask API for live predictions</div>'
+    : '<div style="font-size:10px;color:var(--green);margin-top:.75rem">Live result from NexaVault API v5.0</div>';
+
+  panel.className = 'result-panel '+cls;
+  panel.innerHTML = `
+    <div style="width:52px;height:52px;border-radius:50%;background:${iconBg};color:#fff;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;margin:0 auto .6rem">${icon}</div>
+    <div class="result-decision ${cls}">${r.decision}</div>
+    <span class="risk-badge" style="background:${rb};color:${rc}">${r.risk_level} Risk</span>
+    <div class="result-prob-label">Approval probability</div>
+    <div class="result-prob" style="color:${barColor}">${prob}%</div>
+    <div class="prob-bar-wrap"><div class="prob-bar" style="width:${prob}%;background:${barColor}"></div></div>
+
+    ${hasRate ? `
+    <div style="background:rgba(255,255,255,.65);border-radius:8px;padding:.65rem .85rem;margin:.6rem 0;border:1.5px solid ${rateColor}30">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.4rem">
+        <span style="font-size:11px;font-weight:600;color:${rateColor}">Estimated interest rate</span>
+        <span style="font-size:18px;font-weight:700;color:${rateColor}">${rateLabel}</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:11px">
+        <div><span style="color:var(--mgray)">Monthly EMI at rate</span><br><strong>$${Math.round(trueEmi).toLocaleString()}</strong></div>
+        <div><span style="color:var(--mgray)">Total interest paid</span><br><strong>${totalInt}</strong></div>
+        <div><span style="color:var(--mgray)">Total cost of loan</span><br><strong>${totalPmt}</strong></div>
+        <div><span style="color:var(--mgray)">DTI ratio</span><br><strong>${dti}%</strong></div>
+      </div>
+    </div>` : `
+    <div style="background:rgba(255,255,255,.5);border-radius:8px;padding:.5rem .75rem;margin:.5rem 0;font-size:11px;color:var(--mgray)">
+      Interest rate not available for this credit tier / loan type combination.
+    </div>`}
+
+    <div class="detail-grid">
+      <div class="detail-item"><div class="detail-key">Simple EMI</div><div class="detail-val">$${(emi).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</div></div>
+      <div class="detail-item"><div class="detail-key">Monthly income</div><div class="detail-val">$${Math.round(total).toLocaleString()}</div></div>
+      <div class="detail-item"><div class="detail-key">Income / EMI</div><div class="detail-val">${ratio}×</div></div>
+      <div class="detail-item"><div class="detail-key">Loan / Income</div><div class="detail-val">${lti}×</div></div>
+    </div>
+    ${reviewHtml}
+    ${flagHtml?'<div class="flag-list">'+flagHtml+'</div>':''}
+    ${simNote}
+  `;
+}
+
+// ── Overview charts ───────────────────────────────────────────────────────
+new Chart(document.getElementById('donutChart'), {
+  type:'doughnut',
+  data:{labels:['Approved','Manual Review','Rejected'],datasets:[{data:[77,18,5],backgroundColor:['#1D9E75','#E8A020','#E05050'],borderWidth:0}]},
+  options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},cutout:'68%'}
+});
+
+new Chart(document.getElementById('areaChart'), {
+  type:'bar',
+  data:{labels:['Urban','Semiurban','Rural','Suburban'],
+        datasets:[{label:'Approval %',data:[72,78,64,70],backgroundColor:['#378ADD','#1D9E75','#D85A30','#7B5EA7'],borderRadius:5,borderWidth:0}]},
+  options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+    scales:{y:{beginAtZero:false,min:50,max:90,ticks:{callback:v=>v+'%'}},x:{grid:{display:false}}}}
+});
+
+new Chart(document.getElementById('creditChart'), {
+  type:'bar',
+  data:{labels:['Very Poor','Poor','Fair','Good','Very Good','Exceptional'],
+        datasets:[{label:'Approval Rate %',data:[8,22,45,71,88,96],
+                   backgroundColor:['#E24B4A','#D85A30','#EF9F27','#378ADD','#5DCAA5','#1D9E75'],borderRadius:5,borderWidth:0}]},
+  options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+    scales:{y:{beginAtZero:true,max:100,ticks:{callback:v=>v+'%'}},x:{grid:{display:false}}}}
+});
+
+const feats=[{n:'Credit score (Experian)',v:.358},{n:'Income / EMI ratio',v:.178},{n:'Log total income',v:.134},
+  {n:'Loan-to-income ratio',v:.112},{n:'Log loan amount',v:.078},{n:'Property area',v:.055},
+  {n:'Education level',v:.044},{n:'EMI amount',v:.024},{n:'Employment type',v:.017}];
+const fi=document.getElementById('featureImportance');
+feats.forEach(f=>{
+  fi.innerHTML+=`<div style="display:flex;align-items:center;gap:10px;margin-bottom:7px">
+    <span style="font-size:12px;color:var(--mgray);width:180px;flex-shrink:0;text-align:right">${f.n}</span>
+    <div style="flex:1;background:#f0f2f5;border-radius:99px;height:8px">
+      <div style="width:${f.v*280}%;max-width:100%;height:8px;border-radius:99px;background:var(--blue)"></div>
+    </div>
+    <span style="font-size:12px;color:var(--mgray);width:38px">${(f.v*100).toFixed(1)}%</span>
+  </div>`;
+});
+
+// ── Model comparison ──────────────────────────────────────────────────────
+const MODELS=[
+  {name:'SVM (RBF)',           cv:.980,auc:.974,f1:.941,prec:.932,rec:.950,acc:.906,best:true},
+  {name:'Logistic Regression', cv:.982,auc:.965,f1:.944,prec:.938,rec:.950,acc:.912,best:false},
+  {name:'Gradient Boosting',   cv:.929,auc:.941,f1:.929,prec:.923,rec:.935,acc:.888,best:false},
+  {name:'Random Forest',       cv:.921,auc:.930,f1:.903,prec:.897,rec:.909,acc:.838,best:false},
+];
+const tb=document.getElementById('modelTableBody');
+MODELS.forEach(m=>{
+  const row=document.createElement('tr');
+  if(m.best) row.className='best';
+  const pct=v=>(v*100).toFixed(1)+'%';
+  const bar=v=>`<div class="bar-cell"><div class="mini-bar-bg"><div class="mini-bar-fill" style="width:${(v-0.8)*500}%"></div></div><span>${pct(v)}</span></div>`;
+  row.innerHTML=`<td>${m.best?'★ ':''}<strong>${m.name}</strong></td><td>${pct(m.cv)}</td><td>${bar(m.auc)}</td><td>${bar(m.f1)}</td><td>${pct(m.prec)}</td><td>${pct(m.rec)}</td><td>${pct(m.acc)}</td>`;
+  tb.appendChild(row);
+});
+
+new Chart(document.getElementById('rocChart'),{
+  type:'line',
+  data:{datasets:[
+    {label:'SVM (0.974)',data:[{x:0,y:0},{x:.03,y:.55},{x:.06,y:.78},{x:.10,y:.88},{x:.18,y:.94},{x:.30,y:.97},{x:.50,y:.99},{x:1,y:1}],borderColor:'#1D9E75',borderWidth:2.5,fill:false,tension:.4,pointRadius:0},
+    {label:'Log. Reg. (0.965)',data:[{x:0,y:0},{x:.04,y:.50},{x:.08,y:.75},{x:.12,y:.87},{x:.20,y:.93},{x:.32,y:.96},{x:.52,y:.99},{x:1,y:1}],borderColor:'#378ADD',borderWidth:2,fill:false,tension:.4,pointRadius:0},
+    {label:'Grad. Boost (0.941)',data:[{x:0,y:0},{x:.05,y:.44},{x:.10,y:.70},{x:.15,y:.84},{x:.25,y:.91},{x:.38,y:.95},{x:.55,y:.98},{x:1,y:1}],borderColor:'#D85A30',borderWidth:2,fill:false,tension:.4,pointRadius:0},
+    {label:'Random Forest (0.930)',data:[{x:0,y:0},{x:.06,y:.40},{x:.12,y:.67},{x:.18,y:.81},{x:.28,y:.89},{x:.42,y:.94},{x:.58,y:.97},{x:1,y:1}],borderColor:'#7B5EA7',borderWidth:2,fill:false,tension:.4,pointRadius:0},
+    {label:'Random',data:[{x:0,y:0},{x:1,y:1}],borderColor:'#ccc',borderWidth:1,borderDash:[5,5],fill:false,pointRadius:0},
+  ]},
+  options:{responsive:true,maintainAspectRatio:false,
+    scales:{x:{type:'linear',min:0,max:1,title:{display:true,text:'False Positive Rate'}},
+            y:{min:0,max:1,title:{display:true,text:'True Positive Rate'}}},
+    plugins:{legend:{position:'bottom',labels:{font:{size:11},boxWidth:14}}}}
+});
+
+const cm=document.getElementById('confMatrix');
+cm.innerHTML='<div></div><div style="text-align:center;font-size:11px;color:var(--mgray);padding:.3rem">Predicted NO</div><div style="text-align:center;font-size:11px;color:var(--mgray);padding:.3rem">Predicted YES</div><div style="writing-mode:vertical-rl;transform:rotate(180deg);font-size:11px;color:var(--mgray);text-align:center">Actual NO</div>';
+[{v:287,l:'True Negative',bg:'#fdf0f0',tc:'#7a1010'},{v:28,l:'False Positive',bg:'#fef9ec',tc:'#7a5000'},].forEach(c=>{
+  cm.innerHTML+=`<div style="background:${c.bg};border-radius:8px;padding:.7rem;text-align:center"><div style="font-size:22px;font-weight:700;color:${c.tc}">${c.v}</div><div style="font-size:10px;color:${c.tc};opacity:.8;margin-top:2px">${c.l}</div></div>`;
+});
+cm.innerHTML+='<div style="writing-mode:vertical-rl;transform:rotate(180deg);font-size:11px;color:var(--mgray);text-align:center">Actual YES</div>';
+[{v:31,l:'False Negative',bg:'#fef9ec',tc:'#7a5000'},{v:654,l:'True Positive',bg:'#e8faf4',tc:'#04342C'},].forEach(c=>{
+  cm.innerHTML+=`<div style="background:${c.bg};border-radius:8px;padding:.7rem;text-align:center"><div style="font-size:22px;font-weight:700;color:${c.tc}">${c.v}</div><div style="font-size:10px;color:${c.tc};opacity:.8;margin-top:2px">${c.l}</div></div>`;
+});
+
+// ── Pipeline ──────────────────────────────────────────────────────────────
+const steps=[
+  {n:'1',label:'Data\nIngestion',desc:'800 records\n25 features',color:'#028090'},
+  {n:'2',label:'EDA &\nAnalysis',desc:'Distributions\ncorrelations',color:'#1779BA'},
+  {n:'3',label:'Feature\nEngineering',desc:'14 derived\nfeatures',color:'#7B5EA7'},
+  {n:'4',label:'Preprocessing\nPipeline',desc:'Scaler +\nOneHotEncoder',color:'#2E8B57'},
+  {n:'5',label:'Model\nTraining',desc:'4 models\n5-fold CV',color:'#E8A020'},
+  {n:'6',label:'Evaluation\n& Selection',desc:'AUC · F1\nConfusion matrix',color:'#C0602F'},
+  {n:'7',label:'Deploy\nREST API',desc:'Flask · Docker\nPort 5000',color:'#E05050'},
+];
+const pf=document.getElementById('pipelineFlow');
+steps.forEach((s,i)=>{
+  pf.innerHTML+=`<div class="pipe-step"><div class="pipe-circle" style="background:${s.color}">${s.n}</div><div class="pipe-label">${s.label.replace('\n','<br>')}</div><div class="pipe-desc">${s.desc.replace('\n','<br>')}</div></div>`;
+  if(i<steps.length-1) pf.innerHTML+=`<div class="pipe-arrow">→</div>`;
+});
+
+const ds=document.getElementById('dataStats');
+[{k:'Training records',v:'800'},{k:'Test records',v:'200'},{k:'Raw features',v:'25'},{k:'Engineered features',v:'39'},{k:'Target classes',v:'3 (Approved / Review / Rejected)'},{k:'Approval rate',v:'~77%'},{k:'CV strategy',v:'5-fold stratified'},{k:'Best model AUC',v:'97.4% (SVM)'}].forEach(r=>{
+  ds.innerHTML+=`<div style="display:flex;justify-content:space-between;padding:.35rem 0;border-bottom:1px solid #f0f2f5;font-size:13px"><span style="color:var(--mgray)">${r.k}</span><span style="font-weight:600">${r.v}</span></div>`;
+});
+
+const ef=document.getElementById('engFeatures');
+[['Income / EMI Ratio','Monthly income ÷ EMI'],['DTI Ratio','(Debt + EMI) ÷ income'],['Affordability Score','Net income ÷ EMI'],['Loan-to-Income','Loan ÷ annual income'],['Credit Score Numeric','Experian tier → 300–850'],['Employment Risk','Ordinal stability score'],['Log(Total Income)','Reduces income skew'],['Log(Loan Amount)','Normalises distribution'],['Net Monthly Income','Income minus debt'],['Total Annual Income','All income sources']].forEach(([f,d])=>{
+  ef.innerHTML+=`<div style="display:flex;gap:8px;padding:.35rem 0;border-bottom:1px solid #f0f2f5;font-size:12px"><span style="color:var(--teal);font-weight:600;width:170px;flex-shrink:0">${f}</span><span style="color:var(--mgray)">${d}</span></div>`;
+});
+
+const ae=document.getElementById('apiEndpoints');
+[{m:'GET',p:'/health',d:'Service health check + model status',c:'#1D9E75'},{m:'POST',p:'/predict',d:'Single applicant — instant decision',c:'#028090'},{m:'POST',p:'/predict/batch',d:'CSV batch — thousands of applications',c:'#7B5EA7'},{m:'GET',p:'/model/info',d:'Model type, version, feature list',c:'#E8A020'}].forEach(ep=>{
+  ae.innerHTML+=`<div style="display:flex;align-items:center;gap:10px;padding:.5rem 0;border-bottom:1px solid #f0f2f5;font-size:13px">
+    <span style="background:${ep.c};color:#fff;padding:2px 10px;border-radius:5px;font-size:11px;font-weight:600;width:46px;text-align:center;flex-shrink:0">${ep.m}</span>
+    <span style="font-family:monospace;font-size:12px;color:var(--teal);width:140px;flex-shrink:0">${ep.p}</span>
+    <span style="color:var(--mgray)">${ep.d}</span>
+  </div>`;
+});
+</script>
+</body>
+</html>

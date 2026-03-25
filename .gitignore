@@ -1,0 +1,50 @@
+# ── Python ────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+.Python
+
+# ── Virtual environment ───────────────────────────────────────
+venv/
+env/
+ENV/
+.venv/
+
+# ── ML model files (Render retrains on deploy) ────────────────
+*.pkl
+*.joblib
+*.model
+
+# ── Environment variables ─────────────────────────────────────
+.env
+.env.local
+.env.production
+
+# ── macOS system files ────────────────────────────────────────
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+
+# ── Jupyter ───────────────────────────────────────────────────
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# ── Logs & temp files ─────────────────────────────────────────
+*.log
+*.tmp
+*.bak
+logs/
+
+# ── IDE files ─────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ── Data (comment out next line if you want CSVs in GitHub) ───
+# data/*.csv
