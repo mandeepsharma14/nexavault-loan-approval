@@ -10,7 +10,7 @@ Changes in v5.0:
   - Interest rate calculator added to every approved/review response
   - Training data expanded to 2,000 records
 """
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_file
 import pandas as pd, numpy as np, joblib, os, pathlib
 from datetime import datetime
 
@@ -205,11 +205,16 @@ def cors(r):
 
 @app.route("/")
 def home():
+    """Serve the interactive dashboard as the homepage."""
+    dashboard_path = BASE_DIR / "nexavault_dashboard.html"
+    if dashboard_path.exists():
+        return send_file(str(dashboard_path))
+    # Fallback JSON if dashboard file not found
     return jsonify({
         "name":        "NexaVault Intelligent Loan Approval System",
         "version":     "5.0.0",
         "author":      "Mandeep Sharma",
-        "copyright":   "Copyright \u00a9 2026 Mandeep Sharma. All rights reserved.",
+        "copyright":   "Copyright © 2026 Mandeep Sharma. All rights reserved.",
         "company":     "NexaVault Financial Corp",
         "status":      "live",
         "model":       "loaded" if model else "not loaded",
@@ -220,8 +225,7 @@ def home():
             "predict":       "POST /predict",
             "batch_predict": "POST /predict/batch",
         },
-        "github":      "https://github.com/mandeepsharma14/nexavault-loan-approval",
-        "dashboard":   "Download nexavault_dashboard.html from GitHub and open in any browser",
+        "github": "https://github.com/mandeepsharma14/nexavault-loan-approval",
     })
 
 
