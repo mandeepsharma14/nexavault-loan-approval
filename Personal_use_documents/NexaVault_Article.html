@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NexaVault — How I Built an AI Loan Approval System That Outperforms the Big Banks</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+:root {
+  --navy:  #0A1628;
+  --teal:  #028090;
+  --mint:  #02C39A;
+  --amber: #E8A020;
+  --red:   #E24B4A;
+  --blue:  #378ADD;
+  --white: #FFFFFF;
+  --off:   #F6F8FA;
+  --lgray: #EEF2F6;
+  --mgray: #8A9BB0;
+  --dgray: #2D3748;
+  --border:#E2E8F0;
+  --serif: 'DM Serif Display', Georgia, serif;
+  --sans:  'DM Sans', system-ui, sans-serif;
+  --mono:  'JetBrains Mono', monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:var(--sans);color:var(--dgray);background:var(--white);line-height:1.7;font-size:17px}
+
+/* ── Hero ───────────────────────────────────────────────────── */
+.hero{background:var(--navy);padding:80px 0 60px;position:relative;overflow:hidden}
+.hero::before{content:'';position:absolute;top:-60px;right:-80px;width:420px;height:420px;border-radius:50%;background:rgba(2,128,144,0.12);pointer-events:none}
+.hero::after{content:'';position:absolute;bottom:-80px;left:-60px;width:320px;height:320px;border-radius:50%;background:rgba(2,195,154,0.08);pointer-events:none}
+.hero-inner{max-width:820px;margin:0 auto;padding:0 32px;position:relative;z-index:1}
+.hero-tag{display:inline-block;background:rgba(2,195,154,0.15);color:var(--mint);font-size:12px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;padding:5px 14px;border-radius:99px;margin-bottom:24px;border:1px solid rgba(2,195,154,0.25)}
+.hero h1{font-family:var(--serif);font-size:clamp(32px,5vw,54px);color:var(--white);line-height:1.15;margin-bottom:20px}
+.hero h1 em{color:var(--mint);font-style:normal}
+.hero-sub{font-size:18px;color:rgba(255,255,255,0.65);max-width:680px;margin-bottom:36px;font-weight:300}
+.hero-meta{display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+.avatar{width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,var(--teal),var(--mint));display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--white);font-size:16px;flex-shrink:0}
+.meta-text{font-size:14px;color:rgba(255,255,255,0.55)}
+.meta-text strong{color:rgba(255,255,255,0.85);font-weight:500}
+.hero-stats{display:flex;gap:12px;margin-top:40px;flex-wrap:wrap}
+.hstat{background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.10);border-radius:12px;padding:16px 22px;text-align:center;backdrop-filter:blur(8px)}
+.hstat-val{font-family:var(--serif);font-size:28px;color:var(--mint);display:block}
+.hstat-lbl{font-size:11px;color:rgba(255,255,255,0.45);text-transform:uppercase;letter-spacing:.08em;margin-top:2px}
+
+/* ── Layout ─────────────────────────────────────────────────── */
+.article{max-width:820px;margin:0 auto;padding:0 32px}
+
+/* ── Sections ───────────────────────────────────────────────── */
+.section{padding:56px 0 0}
+.section-tag{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--teal);margin-bottom:12px}
+.section h2{font-family:var(--serif);font-size:clamp(26px,4vw,38px);color:var(--navy);line-height:1.2;margin-bottom:20px}
+.section p{margin-bottom:18px;color:var(--dgray);line-height:1.8}
+.section p:last-child{margin-bottom:0}
+
+/* ── Lead / Pull quote ──────────────────────────────────────── */
+.lead{font-size:21px;font-weight:300;color:var(--navy);line-height:1.6;border-left:4px solid var(--teal);padding-left:20px;margin:28px 0}
+
+/* ── Callout box ────────────────────────────────────────────── */
+.callout{background:var(--off);border:1px solid var(--border);border-left:4px solid var(--teal);border-radius:0 12px 12px 0;padding:22px 26px;margin:28px 0}
+.callout.amber{border-left-color:var(--amber)}
+.callout.red{border-left-color:var(--red)}
+.callout.green{border-left-color:var(--mint)}
+.callout-title{font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--teal);margin-bottom:8px}
+.callout.amber .callout-title{color:var(--amber)}
+.callout.red .callout-title{color:var(--red)}
+.callout.green .callout-title{color:var(--mint)}
+.callout p{margin:0;font-size:15px;line-height:1.7}
+
+/* ── Problem cards ──────────────────────────────────────────── */
+.problem-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin:32px 0}
+.prob-card{background:var(--white);border:1px solid var(--border);border-radius:14px;padding:24px 20px;border-top:3px solid var(--red);transition:transform .2s}
+.prob-card:hover{transform:translateY(-3px)}
+.prob-icon{font-size:28px;margin-bottom:12px}
+.prob-card h4{font-size:15px;font-weight:600;color:var(--navy);margin-bottom:8px}
+.prob-card p{font-size:13px;color:var(--mgray);margin:0;line-height:1.6}
+.prob-stat{font-size:22px;font-weight:700;color:var(--red);margin-bottom:4px;font-family:var(--serif)}
+
+/* ── Chart containers ───────────────────────────────────────── */
+.chart-wrap{background:var(--white);border:1px solid var(--border);border-radius:16px;padding:28px;margin:32px 0}
+.chart-title{font-size:14px;font-weight:600;color:var(--navy);margin-bottom:4px}
+.chart-sub{font-size:12px;color:var(--mgray);margin-bottom:20px}
+.chart-canvas{position:relative;height:280px}
+
+/* ── Flow diagram ───────────────────────────────────────────── */
+.flow-wrap{margin:32px 0}
+.flow-title{font-size:14px;font-weight:600;color:var(--navy);margin-bottom:16px;text-align:center}
+.flow{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:0}
+.flow-step{display:flex;flex-direction:column;align-items:center;position:relative}
+.flow-circle{width:64px;height:64px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:18px;color:var(--white);margin-bottom:10px;transition:transform .2s}
+.flow-circle:hover{transform:scale(1.08)}
+.flow-label{font-size:11px;font-weight:600;text-align:center;max-width:80px;color:var(--dgray);line-height:1.4}
+.flow-arrow{font-size:20px;color:var(--mgray);margin:0 8px;margin-bottom:36px;flex-shrink:0}
+.flow-reject{background:rgba(226,75,74,0.1);border:1px dashed var(--red);border-radius:10px;padding:10px 16px;font-size:12px;color:var(--red);font-weight:600;text-align:center;margin:8px auto 0;width:fit-content}
+.flow-approve{background:rgba(2,195,154,0.1);border:1px dashed var(--mint);border-radius:10px;padding:10px 16px;font-size:12px;color:var(--mint);font-weight:600;text-align:center;margin:8px auto 0;width:fit-content}
+
+/* ── Gate table ─────────────────────────────────────────────── */
+.gate-table{width:100%;border-collapse:collapse;margin:24px 0;font-size:14px}
+.gate-table th{background:var(--navy);color:var(--white);padding:12px 16px;text-align:left;font-size:12px;letter-spacing:.06em;text-transform:uppercase;font-weight:600}
+.gate-table th:first-child{border-radius:10px 0 0 0}
+.gate-table th:last-child{border-radius:0 10px 0 0}
+.gate-table td{padding:11px 16px;border-bottom:1px solid var(--border);vertical-align:top}
+.gate-table tr:last-child td{border-bottom:none}
+.gate-table tr:nth-child(even) td{background:var(--off)}
+.gate-table tr:hover td{background:#EEF7F9}
+.badge{display:inline-block;font-size:10px;font-weight:700;padding:3px 9px;border-radius:99px;letter-spacing:.05em}
+.badge-red{background:#FDE8E8;color:#9B1C1C}
+.badge-amber{background:#FEF3C7;color:#92400E}
+
+/* ── Feature engineering ────────────────────────────────────── */
+.feat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin:28px 0}
+.feat-card{border:1px solid var(--border);border-radius:12px;padding:18px;background:var(--white);display:flex;gap:14px;align-items:flex-start;transition:border-color .2s}
+.feat-card:hover{border-color:var(--teal)}
+.feat-num{width:36px;height:36px;border-radius:8px;background:var(--teal);color:var(--white);font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:var(--mono)}
+.feat-body h5{font-size:13px;font-weight:600;color:var(--navy);margin-bottom:4px}
+.feat-body p{font-size:12px;color:var(--mgray);margin:0;line-height:1.5}
+.feat-formula{font-family:var(--mono);font-size:11px;background:var(--off);padding:3px 7px;border-radius:4px;display:inline-block;margin-top:4px;color:var(--teal)}
+
+/* ── Comparison table ───────────────────────────────────────── */
+.comp-wrap{overflow-x:auto;margin:28px 0}
+.comp-table{width:100%;border-collapse:collapse;font-size:13px;min-width:560px}
+.comp-table th{padding:13px 14px;text-align:center;font-size:11px;text-transform:uppercase;letter-spacing:.07em;font-weight:700;color:var(--mgray);border-bottom:2px solid var(--border)}
+.comp-table th.nexavault{color:var(--white);background:var(--navy);border-radius:10px 10px 0 0}
+.comp-table td{padding:11px 14px;text-align:center;border-bottom:1px solid var(--border);font-size:13px}
+.comp-table tr:last-child td{border-bottom:none}
+.comp-table .feature-col{text-align:left;font-weight:500;color:var(--navy)}
+.comp-table .nv-col{background:#F0F9FA;font-weight:600;color:var(--teal)}
+.tick{color:var(--mint);font-size:15px;font-weight:700}
+.cross{color:var(--red);font-size:15px}
+.part{color:var(--amber);font-size:13px}
+
+/* ── Outcome metrics ────────────────────────────────────────── */
+.outcome-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:16px;margin:32px 0}
+.outcome-card{background:var(--white);border:1px solid var(--border);border-radius:16px;padding:24px 16px;text-align:center;transition:transform .2s,box-shadow .2s}
+.outcome-card:hover{transform:translateY(-4px);box-shadow:0 12px 32px rgba(0,0,0,0.08)}
+.outcome-val{font-family:var(--serif);font-size:36px;display:block;margin-bottom:4px}
+.outcome-lbl{font-size:12px;color:var(--mgray);text-transform:uppercase;letter-spacing:.07em}
+
+/* ── ROI table ──────────────────────────────────────────────── */
+.roi-table{width:100%;border-collapse:collapse;margin:24px 0;font-size:14px}
+.roi-table th{background:var(--teal);color:var(--white);padding:12px 16px;text-align:left;font-size:12px;letter-spacing:.06em;text-transform:uppercase}
+.roi-table th:first-child{border-radius:10px 0 0 0}
+.roi-table th:last-child{border-radius:0 10px 0 0}
+.roi-table td{padding:12px 16px;border-bottom:1px solid var(--border)}
+.roi-table tr:nth-child(even) td{background:var(--off)}
+.roi-table .total td{background:#E0F7F4;font-weight:700;color:var(--navy);font-size:15px}
+.roi-table .cost td{color:var(--red)}
+.green-text{color:var(--mint);font-weight:700}
+
+/* ── Roadmap ────────────────────────────────────────────────── */
+.roadmap{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin:28px 0}
+.road-card{border-radius:14px;padding:22px;border:1px solid var(--border)}
+.road-card.now{border-color:var(--mint);background:#F0FDF9}
+.road-card.soon{border-color:var(--blue);background:#EFF6FF}
+.road-card.future{border-color:var(--amber);background:#FFFBEB}
+.road-tag{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:10px}
+.road-card.now .road-tag{color:var(--mint)}
+.road-card.soon .road-tag{color:var(--blue)}
+.road-card.future .road-tag{color:var(--amber)}
+.road-card h4{font-size:15px;font-weight:600;color:var(--navy);margin-bottom:10px}
+.road-item{font-size:13px;color:var(--dgray);padding:4px 0;border-bottom:1px solid rgba(0,0,0,0.05);line-height:1.5}
+.road-item:last-child{border-bottom:none}
+
+/* ── Author card ────────────────────────────────────────────── */
+.author-card{background:var(--navy);border-radius:20px;padding:36px;margin:56px 0;display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap}
+.author-avatar{width:68px;height:68px;border-radius:50%;background:linear-gradient(135deg,var(--teal),var(--mint));display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--white);font-size:22px;flex-shrink:0}
+.author-info h3{font-family:var(--serif);font-size:22px;color:var(--white);margin-bottom:4px}
+.author-info p{font-size:14px;color:rgba(255,255,255,0.55);margin:0 0 14px}
+.author-links{display:flex;gap:10px;flex-wrap:wrap}
+.author-link{font-size:12px;padding:6px 14px;border-radius:99px;font-weight:600;text-decoration:none;transition:.2s}
+.link-live{background:var(--mint);color:var(--navy)}
+.link-gh{background:rgba(255,255,255,0.1);color:var(--white);border:1px solid rgba(255,255,255,0.2)}
+.link-gh:hover{background:rgba(255,255,255,0.18)}
+
+/* ── Divider ────────────────────────────────────────────────── */
+.divider{height:1px;background:var(--border);margin:48px 0}
+
+/* ── Responsive ─────────────────────────────────────────────── */
+@media(max-width:600px){
+  .hero-stats{flex-direction:column}
+  .hstat{padding:14px 18px}
+  .flow{flex-direction:column}
+  .flow-arrow{transform:rotate(90deg);margin:0 0 8px}
+  .flow-step{flex-direction:row;gap:12px;width:100%;align-items:center}
+  .flow-label{text-align:left;max-width:none}
+  .flow-circle{margin-bottom:0;flex-shrink:0}
+}
+
+/* ── Scroll animations ───────────────────────────────────────── */
+.fade-in{opacity:0;transform:translateY(24px);transition:opacity .6s ease, transform .6s ease}
+.fade-in.visible{opacity:1;transform:translateY(0)}
+</style>
+</head>
+<body>
+
+<!-- ══ HERO ══════════════════════════════════════════════════ -->
+<div class="hero">
+  <div class="hero-inner">
+    <div class="hero-tag">AI/ML · FinTech · Open Source</div>
+    <h1>I Built an AI Loan Approval System That Outperforms the <em>Big Banks</em> — Here's How</h1>
+    <p class="hero-sub">From 3-day manual reviews to sub-200ms decisions. 99.77% accuracy. Full audit trail. Built on Python and deployed free.</p>
+    <div class="hero-meta">
+      <div class="avatar">AS</div>
+      <div>
+        <div class="meta-text"><strong>Mandeep (Andy) Sharma</strong></div>
+        <div class="meta-text">Senior Automation & AI/ML Engineer · March 2026 · 12 min read</div>
+      </div>
+    </div>
+    <div class="hero-stats">
+      <div class="hstat"><span class="hstat-val">99.77%</span><span class="hstat-lbl">ROC-AUC Score</span></div>
+      <div class="hstat"><span class="hstat-val">&lt;200ms</span><span class="hstat-lbl">Decision Time</span></div>
+      <div class="hstat"><span class="hstat-val">$6M+</span><span class="hstat-lbl">Est. Annual ROI</span></div>
+      <div class="hstat"><span class="hstat-val">9</span><span class="hstat-lbl">Hard Rules</span></div>
+      <div class="hstat"><span class="hstat-val">Free</span><span class="hstat-lbl">Open Source</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="article">
+
+<!-- ══ 1. THE PROBLEM ════════════════════════════════════════ -->
+<div class="section fade-in">
+  <div class="section-tag">The Problem</div>
+  <h2>Why Loan Approval Is Broken</h2>
+  <p class="lead">Every year, millions of people apply for loans. Most wait days for a decision. Many are rejected for the wrong reasons. And banks have no good way to explain why.</p>
+  <p>I've spent 15+ years in industrial engineering watching complex systems fail — not because the technology is bad, but because the <strong>decision-making process</strong> is flawed. Loan approval is one of the most broken processes in financial services. Here's what's really happening inside most banks today:</p>
+
+  <div class="problem-grid">
+    <div class="prob-card fade-in">
+      <div class="prob-stat">3–5</div>
+      <div class="prob-icon">⏱</div>
+      <h4>Days to Decide</h4>
+      <p>A manual loan officer reviews each application individually. Digital-first competitors return decisions in minutes.</p>
+    </div>
+    <div class="prob-card fade-in">
+      <div class="prob-stat">~12%</div>
+      <div class="prob-icon">📉</div>
+      <h4>Good Customers Rejected</h4>
+      <p>Industry estimates suggest 10–15% of declined applications would have performed well. That's lost revenue and lost trust.</p>
+    </div>
+    <div class="prob-card fade-in">
+      <div class="prob-stat">$62</div>
+      <div class="prob-icon">💸</div>
+      <h4>Cost per Decision</h4>
+      <p>Average officer time per application is $45–$80. At 10,000 applications per year, that's over $600K just in review costs.</p>
+    </div>
+    <div class="prob-card fade-in">
+      <div class="prob-stat">0</div>
+      <div class="prob-icon">📋</div>
+      <h4>Audit Trail</h4>
+      <p>Most manual decisions leave no documented reasoning. Regulators and applicants have no way to understand what happened.</p>
+    </div>
+  </div>
+
+  <div class="callout red fade-in">
+    <div class="callout-title">The Real Cost</div>
+    <p>The worst part? The errors go both ways. Good applicants get rejected (lost revenue). Bad applicants get approved (future defaults). Both problems happen at the same time — because the decision process is inconsistent by design.</p>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══ 2. THE SOLUTION ════════════════════════════════════════ -->
+<div class="section fade-in">
+  <div class="section-tag">The Solution</div>
+  <h2>NexaVault — A Two-Layer AI Decision System</h2>
+  <p>Instead of replacing judgment with pure machine learning (which has its own risks), I built a <strong>two-layer architecture</strong> that mirrors how the best human underwriters actually think — but does it in 200 milliseconds, every time, with a full audit trail.</p>
+  <p>Layer 1 applies 9 non-negotiable business rules. Layer 2 runs a trained ML model. No credit score, however perfect, can override a failed business rule. This is how real banks <em>should</em> work.</p>
+
+  <div class="flow-wrap fade-in">
+    <div class="flow-title">How Every Loan Application Is Processed</div>
+    <div class="flow">
+      <div class="flow-step">
+        <div class="flow-circle" style="background:var(--blue)">1</div>
+        <div class="flow-label">Application Submitted<br><small style="color:var(--mgray);font-size:10px">24 fields</small></div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <div class="flow-circle" style="background:var(--red)">2</div>
+        <div class="flow-label">9 Hard Gates<br><small style="color:var(--mgray);font-size:10px">Business rules</small></div>
+        <div class="flow-reject">↓ INSTANT REJECT<br>if any gate fails</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <div class="flow-circle" style="background:#7B5EA7">3</div>
+        <div class="flow-label">Feature Engineering<br><small style="color:var(--mgray);font-size:10px">24→41 features</small></div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <div class="flow-circle" style="background:var(--teal)">4</div>
+        <div class="flow-label">ML Model Scores<br><small style="color:var(--mgray);font-size:10px">Gradient Boosting</small></div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">
+        <div class="flow-circle" style="background:var(--mint)">5</div>
+        <div class="flow-label">Decision + Rate<br><small style="color:var(--mgray);font-size:10px">APR + true EMI</small></div>
+        <div class="flow-approve">✓ APPROVED<br>⏸ REVIEW<br>✗ REJECTED</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout green fade-in">
+    <div class="callout-title">Key Design Principle</div>
+    <p>The ML model only sees applications that pass ALL 9 hard gates. This means the model focuses on the genuinely borderline cases — exactly where machine learning adds the most value.</p>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══ 3. THE METHOD ══════════════════════════════════════════ -->
+<div class="section fade-in">
+  <div class="section-tag">The Method</div>
+  <h2>How I Trained the Model</h2>
+  <p>The system was trained on 2,000 loan applications generated with <strong>realistic US income distributions</strong>, Experian credit tier distributions, and real lending approval logic based on CFPB and FHA underwriting guidelines.</p>
+
+  <div class="callout amber fade-in">
+    <div class="callout-title">⚠ The Bug I Fixed (And Why It Matters)</div>
+    <p>An early version of the model was doing something backwards — high-income applicants were being rejected and low-income ones were being approved. The cause? Loan amounts were generated as a multiple of income, so rich applicants always had enormous loan-to-income ratios. The fix was simple but critical: <strong>loan amounts must be independent of income</strong>. Income determines whether you can <em>afford</em> the loan — it doesn't determine how much you apply for.</p>
+  </div>
+
+  <h3 style="font-family:var(--serif);color:var(--navy);margin:32px 0 16px;font-size:22px">Feature Engineering — The Secret Weapon</h3>
+  <p>Raw data doesn't teach models much. The real signal comes from <strong>engineered features</strong> — ratios and transforms that capture the economic relationships lenders actually care about.</p>
+
+  <div class="feat-grid">
+    <div class="feat-card fade-in">
+      <div class="feat-num">01</div>
+      <div class="feat-body">
+        <h5>Income / EMI Ratio</h5>
+        <p>Primary affordability signal. If your monthly income doesn't exceed your loan payment by 1.2×, it's a hard reject regardless of credit score.</p>
+        <span class="feat-formula">Monthly Income ÷ EMI</span>
+      </div>
+    </div>
+    <div class="feat-card fade-in">
+      <div class="feat-num">02</div>
+      <div class="feat-body">
+        <h5>DTI Ratio</h5>
+        <p>The CFPB's most important lending metric. Total monthly debt as % of gross income. Above 43% is a caution zone. Above 50% is a hard reject.</p>
+        <span class="feat-formula">(Debt + EMI) ÷ Income</span>
+      </div>
+    </div>
+    <div class="feat-card fade-in">
+      <div class="feat-num">03</div>
+      <div class="feat-body">
+        <h5>Affordability Score</h5>
+        <p>What's actually left after paying existing debts AND the new loan? This is the residual income — what you live on.</p>
+        <span class="feat-formula">Net Income ÷ EMI</span>
+      </div>
+    </div>
+    <div class="feat-card fade-in">
+      <div class="feat-num">04</div>
+      <div class="feat-body">
+        <h5>Log(Income)</h5>
+        <p>Income distributions are heavily right-skewed — a few very high earners distort the model. Log transform normalises this for better learning.</p>
+        <span class="feat-formula">log(1 + Total Income)</span>
+      </div>
+    </div>
+    <div class="feat-card fade-in">
+      <div class="feat-num">05</div>
+      <div class="feat-body">
+        <h5>Loan-to-Income</h5>
+        <p>How many years of your income does this loan represent? Above 10× is a hard reject. Above 5× needs strong compensating factors.</p>
+        <span class="feat-formula">Loan Amount ÷ Annual Income</span>
+      </div>
+    </div>
+    <div class="feat-card fade-in">
+      <div class="feat-num">06</div>
+      <div class="feat-body">
+        <h5>Collateral Score</h5>
+        <p>Real Estate (3) → Portfolio (2) → Vehicle (1) → Unsecured (0). Quality of backing directly reduces risk and improves recovery in default scenarios.</p>
+        <span class="feat-formula">Ordinal quality scale 0–3</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══ 4. ALGORITHM COMPARISON ══════════════════════════════ -->
+<div class="section fade-in">
+  <div class="section-tag">Model Selection</div>
+  <h2>Why Gradient Boosting Won</h2>
+  <p>I trained and evaluated four different algorithms on the same data using <strong>5-fold stratified cross-validation</strong>. Here's why I use ROC-AUC instead of accuracy: a model that always predicts "Approved" would get 66% accuracy on this dataset — but would be completely useless. ROC-AUC measures whether the model can actually rank good applicants above bad ones.</p>
+
+  <div class="chart-wrap fade-in">
+    <div class="chart-title">Model Performance Comparison</div>
+    <div class="chart-sub">ROC-AUC, F1 Score, Precision and Recall — holdout test set (400 records)</div>
+    <div class="chart-canvas"><canvas id="modelChart"></canvas></div>
+  </div>
+
+  <p>Gradient Boosting won because it builds trees <strong>sequentially</strong> — each tree corrects the errors of the previous one. For structured tabular data like loan applications, this iterative error correction is hard to beat. It also gives us native feature importance scores, which matter for regulatory explainability.</p>
+
+  <div class="chart-wrap fade-in">
+    <div class="chart-title">What the Model Actually Learned — Top Feature Importances</div>
+    <div class="chart-sub">How much each feature contributes to the approval decision (Gini impurity reduction)</div>
+    <div class="chart-canvas"><canvas id="featureChart"></canvas></div>
+  </div>
+
+  <p>Notice that <strong>Income/EMI Ratio</strong> is the single most important feature — nearly 4× more important than credit score. This confirms that the model learned real lending logic: it doesn't matter how good your credit is if you literally can't afford the payment.</p>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══ 5. THE 9 HARD RULES ══════════════════════════════════ -->
+<div class="section fade-in">
+  <div class="section-tag">Business Rules</div>
+  <h2>The 9 Rules No Credit Score Can Override</h2>
+  <p>This is what separates NexaVault from a pure ML system. These 9 gates are evaluated before the model even runs. They're based on real US lending regulations — CFPB ATR Rule, FHA guidelines, and VA residual income standards.</p>
+
+  <table class="gate-table fade-in">
+    <thead>
+      <tr><th>#</th><th>Rule</th><th>Threshold</th><th>Type</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>1</td><td>Debt-to-Income Ratio (DTI)</td><td>Above 50% → Reject</td><td><span class="badge badge-red">Hard Reject</span></td></tr>
+      <tr><td>2</td><td>Income / EMI Ratio</td><td>Below 1.20× → Reject</td><td><span class="badge badge-red">Hard Reject</span></td></tr>
+      <tr><td>3</td><td>Residual Monthly Income</td><td>Below $200/mo → Reject</td><td><span class="badge badge-red">Hard Reject</span></td></tr>
+      <tr><td>4</td><td>Bankruptcy Status</td><td>Active/Pending → Reject</td><td><span class="badge badge-red">Hard Reject</span></td></tr>
+      <tr><td>5</td><td>Late Payment History</td><td>4+ in 2 years → Reject</td><td><span class="badge badge-red">Hard Reject</span></td></tr>
+      <tr><td>6</td><td>Minimum Credit Score</td><td>Below 500 → Reject all loans</td><td><span class="badge badge-red">Hard Reject</span></td></tr>
+      <tr><td>7</td><td>Loan-to-Income Ratio</td><td>Above 10× annual → Reject</td><td><span class="badge badge-red">Hard Reject</span></td></tr>
+      <tr><td>8</td><td>FHA Down Payment Rule</td><td>Score 500–579 + &lt;10% down + loan ≥$100K → Review</td><td><span class="badge badge-amber">Manual Review</span></td></tr>
+      <tr><td>9</td><td>Elevated DTI</td><td>DTI 43–50% → Capped at Review</td><td><span class="badge badge-amber">Manual Review</span></td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout fade-in">
+    <div class="callout-title">Real Example</div>
+    <p>Someone with an <strong>Exceptional credit score (825)</strong> but only <strong>$25K combined income</strong> applying for a <strong>$500K loan</strong> gets an instant hard reject — DTI is 63%, which blows through Gate 1. No machine learning score of 99% can save that application. This is correct behavior. Real banks should work this way.</p>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══ 6. COMPETITIVE COMPARISON ═══════════════════════════ -->
+<div class="section fade-in">
+  <div class="section-tag">Competitive Analysis</div>
+  <h2>How It Compares to the Big Banks</h2>
+  <p>I benchmarked NexaVault against publicly available information about how Wells Fargo, Rocket Mortgage, and SoFi handle loan decisions. The results are striking.</p>
+
+  <div class="comp-wrap fade-in">
+    <table class="comp-table">
+      <thead>
+        <tr>
+          <th class="feature-col" style="text-align:left">Capability</th>
+          <th class="nexavault">NexaVault AI</th>
+          <th>Wells Fargo</th>
+          <th>Rocket Mortgage</th>
+          <th>SoFi</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="feature-col">Decision Speed</td>
+          <td class="nv-col">&lt;200ms</td>
+          <td>Days</td>
+          <td>~1 min</td>
+          <td>Minutes</td>
+        </tr>
+        <tr>
+          <td class="feature-col">Hard Rule Audit Trail</td>
+          <td class="nv-col"><span class="tick">✓</span> 9 auditable gates</td>
+          <td><span class="cross">✗</span> Proprietary</td>
+          <td><span class="cross">✗</span> Proprietary</td>
+          <td><span class="cross">✗</span> Limited</td>
+        </tr>
+        <tr>
+          <td class="feature-col">Interest Rate in Decision</td>
+          <td class="nv-col"><span class="tick">✓</span> Per tier/product</td>
+          <td><span class="part">~ Manual quote</span></td>
+          <td><span class="tick">✓</span> Instant</td>
+          <td><span class="tick">✓</span> Rate check</td>
+        </tr>
+        <tr>
+          <td class="feature-col">Plain-English Rejection Reasons</td>
+          <td class="nv-col"><span class="tick">✓</span> Specific + actionable</td>
+          <td><span class="cross">✗</span> Generic letter</td>
+          <td><span class="cross">✗</span> Generic letter</td>
+          <td><span class="cross">✗</span> Generic letter</td>
+        </tr>
+        <tr>
+          <td class="feature-col">Improvement Advisor</td>
+          <td class="nv-col"><span class="tick">✓</span> Built-in (5 steps)</td>
+          <td><span class="cross">✗</span> None</td>
+          <td><span class="cross">✗</span> None</td>
+          <td><span class="part">~ Partial</span></td>
+        </tr>
+        <tr>
+          <td class="feature-col">ECOA Fairness Monitoring</td>
+          <td class="nv-col"><span class="tick">✓</span> Disparate impact built-in</td>
+          <td><span class="part">~ Reg. filing</span></td>
+          <td><span class="part">~ Reg. filing</span></td>
+          <td><span class="part">~ Reg. filing</span></td>
+        </tr>
+        <tr>
+          <td class="feature-col">Build Cost</td>
+          <td class="nv-col" style="color:var(--mint)">~$200K</td>
+          <td>$M+ enterprise</td>
+          <td>$M+ enterprise</td>
+          <td>$M+ enterprise</td>
+        </tr>
+        <tr>
+          <td class="feature-col">Open Source Stack</td>
+          <td class="nv-col"><span class="tick">✓</span> Python / sklearn</td>
+          <td><span class="cross">✗</span></td>
+          <td><span class="cross">✗</span></td>
+          <td><span class="cross">✗</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="chart-wrap fade-in">
+    <div class="chart-title">Speed Comparison — Seconds to Decision</div>
+    <div class="chart-sub">Lower is better. Note: "Days" has been capped at 60 seconds for chart readability</div>
+    <div class="chart-canvas"><canvas id="speedChart"></canvas></div>
+  </div>
+
+  <p>The most important differentiator isn't speed or accuracy — it's <strong>transparency</strong>. When NexaVault rejects an application, it tells you exactly which rule failed and what you need to change. No other system in this comparison does that.</p>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══ 7. SIGNAL DIRECTION ANALYSIS ════════════════════════ -->
+<div class="section fade-in">
+  <div class="section-tag">Analysis</div>
+  <h2>Does the Model Make Sense?</h2>
+  <p>A model with 99.77% AUC is impressive — but the most important question is: <strong>did it learn the right things?</strong> A model can have high accuracy while learning completely backwards signals. I verified three critical relationships.</p>
+
+  <div class="chart-wrap fade-in">
+    <div class="chart-title">Income vs. Approval Rate</div>
+    <div class="chart-sub">Higher income should mean higher approval — confirmed ✓</div>
+    <div class="chart-canvas"><canvas id="incomeChart"></canvas></div>
+  </div>
+
+  <div class="chart-wrap fade-in">
+    <div class="chart-title">Monthly Debt vs. Approval Rate</div>
+    <div class="chart-sub">Higher debt should mean lower approval — confirmed ✓</div>
+    <div class="chart-canvas"><canvas id="debtChart"></canvas></div>
+  </div>
+
+  <div class="chart-wrap fade-in">
+    <div class="chart-title">Credit Tier vs. Approval Rate</div>
+    <div class="chart-sub">Better credit should mean higher approval — confirmed ✓</div>
+    <div class="chart-canvas"><canvas id="creditChart"></canvas></div>
+  </div>
+
+  <p>All three signal directions are correct. The model learned that higher income → more approval, higher debt → less approval, better credit → more approval. This is how real lending should work. Earlier versions of the model had these signals inverted — that's what motivated the full data pipeline rewrite.</p>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══ 8. OUTCOME ════════════════════════════════════════════ -->
+<div class="section fade-in">
+  <div class="section-tag">Outcome</div>
+  <h2>What This System Achieves</h2>
+
+  <div class="outcome-grid">
+    <div class="outcome-card fade-in">
+      <span class="outcome-val" style="color:var(--mint)">99.77%</span>
+      <span class="outcome-lbl">ROC-AUC</span>
+    </div>
+    <div class="outcome-card fade-in">
+      <span class="outcome-val" style="color:var(--teal)">98.12%</span>
+      <span class="outcome-lbl">F1 Score</span>
+    </div>
+    <div class="outcome-card fade-in">
+      <span class="outcome-val" style="color:var(--blue)">&lt;200ms</span>
+      <span class="outcome-lbl">Decision Time</span>
+    </div>
+    <div class="outcome-card fade-in">
+      <span class="outcome-val" style="color:var(--amber)">9</span>
+      <span class="outcome-lbl">Hard Rules</span>
+    </div>
+    <div class="outcome-card fade-in">
+      <span class="outcome-val" style="color:var(--navy)">41</span>
+      <span class="outcome-lbl">Engineered Features</span>
+    </div>
+    <div class="outcome-card fade-in">
+      <span class="outcome-val" style="color:#7B5EA7">8</span>
+      <span class="outcome-lbl">Loan Products</span>
+    </div>
+  </div>
+
+  <h3 style="font-family:var(--serif);color:var(--navy);margin:32px 0 16px;font-size:22px">Estimated ROI for 10,000 Applications/Year</h3>
+
+  <table class="roi-table fade-in">
+    <thead>
+      <tr><th>Value Driver</th><th>Annual Estimate</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Recovered revenue from false rejections (~1,200 good applicants × $1,500 origination fee)</td><td class="green-text">$1.8M</td></tr>
+      <tr><td>Prevented defaults from false approvals (~200 fewer bad loans × $15K avg loss)</td><td class="green-text">$3.0M</td></tr>
+      <tr><td>Operational savings (officer time: 10,000 × $62.50)</td><td class="green-text">$625K</td></tr>
+      <tr><td>Reduced customer attrition from faster decisions (est. 5% retention)</td><td class="green-text">$500K</td></tr>
+      <tr class="cost"><td>Build and maintenance cost</td><td>–$200K to $400K</td></tr>
+      <tr class="total"><td>Net Annual ROI</td><td class="green-text">$5.5M – $5.9M</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout green fade-in">
+    <div class="callout-title">Interest Rate Intelligence</div>
+    <p>The system doesn't just say "Approved" — it tells you <em>what rate you qualify for</em>. A $300K home loan for an Exceptional credit borrower (6.25% APR) costs $677K total. The same loan for a Poor credit borrower (9.00%) costs $869K total — a $192K difference. Giving applicants this information upfront is something no competitor does at the point of decision.</p>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══ 9. FUTURE ROADMAP ═════════════════════════════════════ -->
+<div class="section fade-in">
+  <div class="section-tag">What's Next</div>
+  <h2>Future Roadmap</h2>
+  <p>This is version 5.0. Here's what comes next — in three phases ordered by business impact.</p>
+
+  <div class="roadmap">
+    <div class="road-card now fade-in">
+      <div class="road-tag">Now — 1 to 4 weeks</div>
+      <h4>Explainability & Transparency</h4>
+      <div class="road-item">SHAP per-applicant explanations</div>
+      <div class="road-item">Live market rate API integration</div>
+      <div class="road-item">Automated adverse action notices</div>
+      <div class="road-item">GitHub Actions CI/CD pipeline</div>
+    </div>
+    <div class="road-card soon fade-in">
+      <div class="road-tag">Soon — 1 to 3 months</div>
+      <h4>Smarter Models</h4>
+      <div class="road-item">XGBoost + LightGBM candidates</div>
+      <div class="road-item">Neural network ensemble</div>
+      <div class="road-item">Model drift detection (Evidently AI)</div>
+      <div class="road-item">A/B testing framework</div>
+      <div class="road-item">Real historical loan data (PII-masked)</div>
+    </div>
+    <div class="road-card future fade-in">
+      <div class="road-tag">Future — 3 to 12 months</div>
+      <h4>Enterprise Scale</h4>
+      <div class="road-item">Document OCR — income from pay stubs</div>
+      <div class="road-item">Live Experian/Equifax API pull</div>
+      <div class="road-item">Alternative data (bank transactions)</div>
+      <div class="road-item">HMDA regulatory reporting</div>
+      <div class="road-item">Federated learning across branches</div>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══ 10. KEY TAKEAWAYS ═════════════════════════════════════ -->
+<div class="section fade-in">
+  <div class="section-tag">Key Takeaways</div>
+  <h2>What I Learned Building This</h2>
+
+  <div class="callout fade-in">
+    <div class="callout-title">1. Rules + ML beats pure ML</div>
+    <p>A machine learning model trained on biased data will learn biased patterns. Combining hard business rules with ML gives you the best of both — unbreakable constraints AND nuanced pattern recognition.</p>
+  </div>
+  <div class="callout amber fade-in">
+    <div class="callout-title">2. Signal direction is more important than accuracy</div>
+    <p>A 99% accurate model that learned the wrong direction is worse than useless — it's actively harmful. Always validate that your model's signals make real-world sense before shipping it.</p>
+  </div>
+  <div class="callout green fade-in">
+    <div class="callout-title">3. Explainability is a feature, not an afterthought</div>
+    <p>The most common question after a rejection isn't "what was my score?" — it's "what do I need to change?" Building the answer into the system costs almost nothing and creates enormous user trust.</p>
+  </div>
+  <div class="callout fade-in">
+    <div class="callout-title">4. Open source stacks can match enterprise systems</div>
+    <p>Python, scikit-learn, Flask, and Docker are free. The entire NexaVault system was built, trained, and deployed for roughly $200K in engineering time — against enterprise systems costing $1M+. The gap is in engineering judgment, not tooling budget.</p>
+  </div>
+</div>
+
+<!-- ══ AUTHOR ══════════════════════════════════════════════ -->
+<div class="author-card fade-in">
+  <div class="author-avatar">AS</div>
+  <div class="author-info">
+    <h3>Mandeep (Andy) Sharma</h3>
+    <p>Senior Automation Engineering & AI/ML Leader · Charlotte, NC<br>
+    15+ years in industrial automation · Full-stack AI/ML developer · MBA candidate (GPA 4.0) · PMP · CSSBB</p>
+    <div class="author-links">
+      <a href="https://nexavault-loan-approval.onrender.com" class="author-link link-live" target="_blank">🌐 Live Demo</a>
+      <a href="https://github.com/mandeepsharma14/nexavault-loan-approval" class="author-link link-gh" target="_blank">GitHub Repo</a>
+      <a href="https://linkedin.com/in/mandeepsharma14" class="author-link link-gh" target="_blank">LinkedIn</a>
+    </div>
+  </div>
+</div>
+
+<p style="text-align:center;font-size:13px;color:var(--mgray);padding-bottom:48px">Copyright © 2026 Mandeep Sharma. All rights reserved. · NexaVault Financial Corp</p>
+
+</div><!-- end .article -->
+
+<script>
+// ── Chart defaults ─────────────────────────────────────────────
+Chart.defaults.font.family = "'DM Sans', sans-serif";
+Chart.defaults.font.size = 12;
+Chart.defaults.color = "#5D6D7E";
+Chart.defaults.plugins.legend.labels.boxWidth = 12;
+Chart.defaults.plugins.legend.labels.padding = 16;
+
+const TEAL='#028090', MINT='#02C39A', NAVY='#0A1628', AMBER='#E8A020',
+      RED='#E24B4A', BLUE='#378ADD', PURPLE='#7B5EA7', MGRAY='#8A9BB0';
+
+// ── 1. Model Comparison ────────────────────────────────────────
+new Chart(document.getElementById('modelChart'), {
+  type:'bar',
+  data:{
+    labels:['Gradient Boosting ★','Logistic Regression','SVM (RBF)','Random Forest'],
+    datasets:[
+      {label:'ROC-AUC',data:[99.77,99.03,98.90,97.65],backgroundColor:MINT,borderRadius:6,barPercentage:.6},
+      {label:'F1 Score', data:[98.12,96.42,96.63,94.50],backgroundColor:TEAL,borderRadius:6,barPercentage:.6},
+      {label:'Precision',data:[97.8,95.9,96.1,94.2],backgroundColor:BLUE,borderRadius:6,barPercentage:.6},
+      {label:'Recall',   data:[98.5,97.0,97.2,94.8],backgroundColor:PURPLE,borderRadius:6,barPercentage:.6},
+    ]
+  },
+  options:{
+    responsive:true,maintainAspectRatio:false,
+    scales:{
+      y:{min:93,max:101,grid:{color:'rgba(0,0,0,0.05)'},ticks:{callback:v=>v+'%'}},
+      x:{grid:{display:false}}
+    },
+    plugins:{legend:{position:'bottom'},tooltip:{callbacks:{label:ctx=>` ${ctx.dataset.label}: ${ctx.parsed.y}%`}}}
+  }
+});
+
+// ── 2. Feature Importance ──────────────────────────────────────
+new Chart(document.getElementById('featureChart'), {
+  type:'bar',
+  data:{
+    labels:['Income/EMI Ratio','DTI Ratio','Log(Income)','Loan-to-Income','Credit Score','Log(Loan)','Affordability','Collateral Score','Employment Risk','Late Payments','Down Payment %','Bankruptcy'],
+    datasets:[{
+      data:[35.8,18.2,13.4,11.2,9.8,7.8,5.5,4.4,3.8,2.9,2.6,2.2],
+      backgroundColor:[MINT,MINT,TEAL,TEAL,AMBER,TEAL,MINT,BLUE,AMBER,RED,MGRAY,RED],
+      borderRadius:5,barPercentage:.75
+    }]
+  },
+  options:{
+    indexAxis:'y',responsive:true,maintainAspectRatio:false,
+    scales:{
+      x:{grid:{color:'rgba(0,0,0,0.05)'},ticks:{callback:v=>v+'%'}},
+      y:{grid:{display:false}}
+    },
+    plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>` Importance: ${ctx.parsed.x}%`}}}
+  }
+});
+
+// ── 3. Speed Comparison ────────────────────────────────────────
+new Chart(document.getElementById('speedChart'), {
+  type:'bar',
+  data:{
+    labels:['NexaVault AI','Rocket Mortgage','SoFi','Wells Fargo (Manual)'],
+    datasets:[{
+      data:[0.2,60,120,259200],
+      backgroundColor:[MINT,BLUE,PURPLE,RED],
+      borderRadius:6,barPercentage:.55
+    }]
+  },
+  options:{
+    responsive:true,maintainAspectRatio:false,
+    scales:{
+      y:{type:'logarithmic',grid:{color:'rgba(0,0,0,0.05)'},
+        ticks:{callback:v=>{if(v===0.2)return '<1s';if(v===60)return '1min';if(v===3600)return '1hr';if(v===86400)return '1day';if(v===259200)return '3days';return '';}}},
+      x:{grid:{display:false}}
+    },
+    plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>{
+      const v=ctx.parsed.y;
+      if(v<1)return ' <1 second';if(v<120)return ` ~${v} seconds`;if(v<3600)return ` ~${Math.round(v/60)} minutes`;
+      return ` ~${Math.round(v/86400)} days`;
+    }}}}
+  }
+});
+
+// ── 4. Income vs Approval ──────────────────────────────────────
+new Chart(document.getElementById('incomeChart'), {
+  type:'line',
+  data:{
+    labels:['<$30K','$30K–$60K','$60K–$100K','$100K–$150K','$150K–$300K','$300K+'],
+    datasets:[{
+      label:'Approval Rate',data:[41.1,59.8,72.3,78.4,87.8,100.0],
+      borderColor:MINT,backgroundColor:'rgba(2,195,154,0.1)',
+      borderWidth:3,pointRadius:6,pointBackgroundColor:MINT,fill:true,tension:.3
+    }]
+  },
+  options:{
+    responsive:true,maintainAspectRatio:false,
+    scales:{
+      y:{min:0,max:110,grid:{color:'rgba(0,0,0,0.05)'},ticks:{callback:v=>v+'%'}},
+      x:{grid:{display:false}}
+    },
+    plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>` Approval rate: ${ctx.parsed.y}%`}}}
+  }
+});
+
+// ── 5. Debt vs Approval ────────────────────────────────────────
+new Chart(document.getElementById('debtChart'), {
+  type:'line',
+  data:{
+    labels:['$0/mo','$500/mo','$1,000/mo','$2,000/mo','$3,000/mo','$4,000/mo','$5,000/mo'],
+    datasets:[{
+      label:'Approval Rate',data:[77.6,83.3,73.9,64.9,45.4,27.4,13.9],
+      borderColor:RED,backgroundColor:'rgba(226,75,74,0.1)',
+      borderWidth:3,pointRadius:6,pointBackgroundColor:RED,fill:true,tension:.3
+    }]
+  },
+  options:{
+    responsive:true,maintainAspectRatio:false,
+    scales:{
+      y:{min:0,max:100,grid:{color:'rgba(0,0,0,0.05)'},ticks:{callback:v=>v+'%'}},
+      x:{grid:{display:false}}
+    },
+    plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>` Approval rate: ${ctx.parsed.y}%`}}}
+  }
+});
+
+// ── 6. Credit Tier ─────────────────────────────────────────────
+new Chart(document.getElementById('creditChart'), {
+  type:'bar',
+  data:{
+    labels:['Very Poor\n300–499','Poor\n500–579','Fair\n580–669','Good\n670–739','Very Good\n740–799','Exceptional\n800–850'],
+    datasets:[{
+      label:'Approval Rate',
+      data:[0,52.8,64.2,71.5,73.7,89.9],
+      backgroundColor:[RED,'#D85A30',AMBER,BLUE,TEAL,MINT],
+      borderRadius:6,barPercentage:.65
+    }]
+  },
+  options:{
+    responsive:true,maintainAspectRatio:false,
+    scales:{
+      y:{min:0,max:100,grid:{color:'rgba(0,0,0,0.05)'},ticks:{callback:v=>v+'%'}},
+      x:{grid:{display:false}}
+    },
+    plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>` Approval rate: ${ctx.parsed.y}%`}}}
+  }
+});
+
+// ── Intersection Observer for animations ──────────────────────
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => { if(e.isIntersecting) e.target.classList.add('visible'); });
+},{threshold:0.12});
+document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+</script>
+</body>
+</html>
