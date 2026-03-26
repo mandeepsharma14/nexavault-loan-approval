@@ -203,11 +203,33 @@ def cors(r):
     return r
 
 
+@app.route("/")
+def home():
+    return jsonify({
+        "name":        "NexaVault Intelligent Loan Approval System",
+        "version":     "5.0.0",
+        "author":      "Mandeep Sharma",
+        "copyright":   "Copyright \u00a9 2026 Mandeep Sharma. All rights reserved.",
+        "company":     "NexaVault Financial Corp",
+        "status":      "live",
+        "model":       "loaded" if model else "not loaded",
+        "timestamp":   datetime.utcnow().isoformat(),
+        "description": "AI-powered loan approval system with 99.77% ROC-AUC, 9 hard underwriting gates, and real-time interest rate calculator.",
+        "endpoints": {
+            "health":        "GET  /health",
+            "predict":       "POST /predict",
+            "batch_predict": "POST /predict/batch",
+        },
+        "github":      "https://github.com/mandeepsharma14/nexavault-loan-approval",
+        "dashboard":   "Download nexavault_dashboard.html from GitHub and open in any browser",
+    })
+
+
 @app.route("/health")
 def health():
     return jsonify({"status":"healthy","model":"loaded" if model else "not loaded",
                     "company":"NexaVault Financial Corp","version":"5.0.0",
-                    "copyright":"Copyright (c) 2026 Mandeep Sharma",
+                    "copyright":"Copyright \u00a9 2026 Mandeep Sharma. All rights reserved.",
                     "timestamp":datetime.utcnow().isoformat()})
 
 
